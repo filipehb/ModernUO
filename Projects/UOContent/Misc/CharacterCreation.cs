@@ -122,6 +122,7 @@ public static class CharacterCreation
 
     private static void EventSink_CharacterCreated(CharacterCreatedEventArgs args)
     {
+        var youngEnabled = ServerConfiguration.GetSetting("rp.young.enable", Core.AOS);
         if (!VerifyProfession(args.Profession))
         {
             args.Profession = 0;
@@ -156,6 +157,11 @@ public static class CharacterCreation
         if (newChar is PlayerMobile pm)
         {
             pm.Profession = args.Profession;
+
+            if (!youngEnabled)
+            {
+                ((Account)pm.Account).Young = false;
+            }
 
             if (pm.AccessLevel == AccessLevel.Player && ((Account)pm.Account).Young)
             {
