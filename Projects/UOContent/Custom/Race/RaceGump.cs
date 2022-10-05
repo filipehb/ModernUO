@@ -59,22 +59,25 @@ public class RaceGump : Gump
                 {
                     // Neste local tem os hues e bodies e outras coisas Projects/UOContent/Misc/RaceDefinitions.cs
                     // Aqui tambem tem algumas coisas boas Projects/UOContent/Engines/ML Quests/Gumps/RaceChangeGump.cs
-
+                    //movetoworld 3031 2790 - cidade humana
+                    RaceSave.SetRace(pm, Races.Humano, false);
                     m.SendGump(new SkinGump(pm));
                     // m.SendGump(new FormationKitGump(pm, Races.Humano));
                     break;
                 }
             case (int)Races.Elfo:
                 {
+                    RaceSave.SetRace(pm, Races.Elfo, false);
                     m.SendGump(new SkinGump(pm));
-                    // pm.Race = Server.Race.Elf;
+                    // go 2666 2154 - talvez cidade elfica
                     // m.SendGump(new FormationKitGump(pm, Races.Elfo));
                     break;
                 }
             case (int)Races.Anao:
                 {
+                    RaceSave.SetRace(pm, Races.Anao, false);
                     m.SendGump(new SkinGump(pm));
-                    // pm.Race = Server.Race.Dwarf;
+                    // go 2551 1335 - cidade anã
                     // m.SendGump(new FormationKitGump(pm, Races.Anao));
                     break;
                 }
