@@ -54,6 +54,6 @@
         <AdditionalFiles Include="Migrations/*.v*.json" />
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="Custom\Classes" />
+      <Folder Include="Custom\Mobiles" />
     </ItemGroup>
 </Project>

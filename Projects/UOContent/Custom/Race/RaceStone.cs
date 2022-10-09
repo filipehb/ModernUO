@@ -1,4 +1,5 @@
 using Server.Gumps;
+using Server.Mobiles;
 
 namespace Server.Custom.Race;
 
@@ -18,14 +19,16 @@ public class RaceStone : Item
 
     public override void OnDoubleClick(Mobile from)
     {
-        from.Frozen = true;
+        //TODO Ajustar essa parte depois
+        // from.Frozen = true;
 
-        if (from.HasGump<RaceGump>())
-        {
-            from.CloseGump<RaceGump>();
-        }
-
-        from.SendGump(new RaceGump(from));
+        // if (from.HasGump<RaceGump>())
+        // {
+        //     from.CloseGump<RaceGump>();
+        // }
+        //
+        // from.SendGump(new RaceGump(from));
+        RacePersistence.SetRace(from as PlayerMobile, Races.Dwarve, false);
     }
 
     public RaceStone(Serial serial) : base(serial)

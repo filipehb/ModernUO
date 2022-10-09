@@ -2,9 +2,9 @@ namespace Server.Custom.Race;
 
 public enum Races
 {
-    Humano = 1,
-    Elfo = 2,
-    Anao = 3,
+    Human = 1,
+    Elve = 2,
+    Dwarve = 3,
     Hobbit = 4,
-    Orc = 5
+    Uruk = 5
 }

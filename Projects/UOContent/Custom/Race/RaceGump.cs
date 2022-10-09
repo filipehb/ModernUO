@@ -25,9 +25,9 @@ public class RaceGump : Gump
         //AddLabel(251, 365, 0, @"Hobbit");
         //AddLabel(252, 322, 0, @"Orc");
 
-        AddButton(225, 240, 209, 208, (int)Races.Humano, GumpButtonType.Reply, 0);
-        AddButton(225, 281, 209, 208, (int)Races.Elfo, GumpButtonType.Reply, 0);
-        AddButton(225, 194, 209, 208, (int)Races.Anao, GumpButtonType.Reply, 0);
+        AddButton(225, 240, 209, 208, (int)Races.Human, GumpButtonType.Reply, 0);
+        AddButton(225, 281, 209, 208, (int)Races.Elve, GumpButtonType.Reply, 0);
+        AddButton(225, 194, 209, 208, (int)Races.Dwarve, GumpButtonType.Reply, 0);
         // AddButton(226, 322, 209, 208, (int) RacesCustom.Hobbit, GumpButtonType.Reply, 0);
         //AddButton(225, 364, 209, 208, (int) Races.Orc, GumpButtonType.Reply, 0);
 
@@ -55,27 +55,27 @@ public class RaceGump : Gump
 
         switch (info.ButtonID)
         {
-            case (int)Races.Humano:
+            case (int)Races.Human:
                 {
                     // Neste local tem os hues e bodies e outras coisas Projects/UOContent/Misc/RaceDefinitions.cs
                     // Aqui tambem tem algumas coisas boas Projects/UOContent/Engines/ML Quests/Gumps/RaceChangeGump.cs
                     //movetoworld 3031 2790 - cidade humana
-                    RaceSave.SetRace(pm, Races.Humano, false);
+                    RacePersistence.SetRace(pm, Races.Human, false);
                     m.SendGump(new SkinGump(pm));
                     // m.SendGump(new FormationKitGump(pm, Races.Humano));
                     break;
                 }
-            case (int)Races.Elfo:
+            case (int)Races.Elve:
                 {
-                    RaceSave.SetRace(pm, Races.Elfo, false);
+                    RacePersistence.SetRace(pm, Races.Elve, false);
                     m.SendGump(new SkinGump(pm));
                     // go 2666 2154 - talvez cidade elfica
                     // m.SendGump(new FormationKitGump(pm, Races.Elfo));
                     break;
                 }
-            case (int)Races.Anao:
+            case (int)Races.Dwarve:
                 {
-                    RaceSave.SetRace(pm, Races.Anao, false);
+                    RacePersistence.SetRace(pm, Races.Dwarve, false);
                     m.SendGump(new SkinGump(pm));
                     // go 2551 1335 - cidade anã
                     // m.SendGump(new FormationKitGump(pm, Races.Anao));
@@ -86,7 +86,7 @@ public class RaceGump : Gump
                     // m.SendGump(new FormationKitGump(pm, RacesCustom.Hobbit));
                     break;
                 }
-            case (int)Races.Orc:
+            case (int)Races.Uruk:
                 {
                     // m.SendGump(new FormationKitGump(pm, RacesCustom.Orc));
                     break;
