@@ -28,10 +28,10 @@ public class FaintUtils
         if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
             FaintPersistence.GetPlayerFaint(playerMobile) >= 0)
         {
-            if (!(bool)FaintPersistence.GetRunningTimer(playerMobile))
+            if (!(bool)FaintTimerPersistence.GetPlayerFaintRunning(playerMobile))
             {
                 FaintRecoverTimer faintRecoverTimer = new FaintRecoverTimer(playerMobile);
-                FaintPersistence.SetRecoverFaintRunning(playerMobile, true);
+                FaintTimerPersistence.SetFaintRunning(playerMobile, true, true);
                 faintRecoverTimer.Start();
             }
 
@@ -45,7 +45,7 @@ public class FaintUtils
         if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
             FaintPersistence.GetPlayerFaint(playerMobile) > 0 && !playerMobile.Alive)
         {
-            FaintPersistence.SetRecoverFaintRunning(playerMobile, false);
+            FaintTimerPersistence.SetFaintRunning(playerMobile, false, true);
         }
     }
 
@@ -60,10 +60,10 @@ public class FaintUtils
             FaintPersistence.DecreaseFaint(playerMobile);
 
 
-            if (!(bool)FaintPersistence.GetRunningTimer(playerMobile))
+            if (!(bool)FaintTimerPersistence.GetPlayerFaintRunning(playerMobile))
             {
                 FaintRecoverTimer faintRecoverTimer = new FaintRecoverTimer(playerMobile);
-                FaintPersistence.SetRecoverFaintRunning(playerMobile, true);
+                FaintTimerPersistence.SetFaintRunning(playerMobile, true, true);
                 faintRecoverTimer.Start();
             }
 

@@ -39,7 +39,7 @@ public class AgeCheckTimer : Timer
                     playerMobile.SendMessage(38, "Seu tempo por essas terras chegou ao fim");
                     playerMobile.SendMessage(38, AgeUtils.GenerateDeath());
                     playerMobile.Kill();
-                    FaintPersistence.SetFaint(playerMobile, new Faint(-1, false), true);
+                    FaintPersistence.SetFaint(playerMobile, -1, true);
                 }
             }
             else

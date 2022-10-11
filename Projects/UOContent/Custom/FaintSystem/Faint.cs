@@ -11,7 +11,6 @@ public class Faint
     private BufferWriter _saveBuffer;
     public int Faints { get; set; }
     public bool isRecoverFaintRunning { get; set; }
-
     public Faint(int faints, bool isRecoverFaintRunning)
     {
         Faints = faints;

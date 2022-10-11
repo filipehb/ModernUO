@@ -8,7 +8,7 @@ namespace Server.Custom.FaintSystem;
 
 public class FaintPersistence
 {
-    private static Dictionary<PlayerMobile, Faint> FaintTable = new();
+    private static Dictionary<PlayerMobile, int> FaintTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(FaintPersistence));
 
     public static void Configure()
@@ -47,7 +47,7 @@ public class FaintPersistence
                 {
                     int tableCount = reader.ReadInt();
 
-                    FaintTable = new Dictionary<PlayerMobile, Faint>();
+                    FaintTable = new Dictionary<PlayerMobile, int>();
 
                     try
                     {
@@ -59,7 +59,7 @@ public class FaintPersistence
                                 continue;
                             }
 
-                            FaintTable[playerMobile] = reader.ReadEntity<Faint>();
+                            FaintTable[playerMobile] = reader.ReadInt();
 
                             logger.Information("Carregada informações de desmaios");
                         }
@@ -78,12 +78,11 @@ public class FaintPersistence
     {
         if (HasFaint(playerMobile))
         {
-            Faint faint = FaintTable[playerMobile];
-            if (faint.Faints < 4)
+            int faint = FaintTable[playerMobile];
+            if (faint < 4)
             {
-                ++faint.Faints;
-
-                FaintTable[playerMobile] = faint;
+                ++faint;
+                SetFaint(playerMobile, faint, true);
             }
 
             logger.Debug(
@@ -100,10 +99,9 @@ public class FaintPersistence
     {
         if (HasFaint(playerMobile))
         {
-            Faint faint = FaintTable[playerMobile];
-            --faint.Faints;
-
-            FaintTable[playerMobile] = faint;
+            int faint = FaintTable[playerMobile];
+            --faint;
+            SetFaint(playerMobile, faint, true);
 
 
             logger.Debug(
@@ -116,37 +114,10 @@ public class FaintPersistence
         return false;
     }
 
-    public static bool SetRecoverFaintRunning(PlayerMobile playerMobile, bool isRecoverFaintRunning)
-    {
-        if (HasFaint(playerMobile))
-        {
-            Faint faint = FaintTable[playerMobile];
-            faint.isRecoverFaintRunning = isRecoverFaintRunning;
-            FaintTable[playerMobile] = faint;
-
-            logger.Debug(
-                $"Foi alterado o valor de isRecoverFaintRunning para a conta {playerMobile.Account.Username} com o personagem {playerMobile.Name}"
-            );
-
-            return true;
-        }
-
-        return false;
-    }
-
-    public static bool SetFaint(PlayerMobile playerMobile, Faint faint, bool overwriteExisting)
+    public static bool SetFaint(PlayerMobile playerMobile, int faint, bool overwriteExisting)
     {
         if (playerMobile == null)
         {
-            return false;
-        }
-
-        if (faint.Faints < -1)
-        {
-            logger.Debug(
-                $"Desmaio é menor que -1 para a conta {playerMobile.Account.Username} para o personagem {playerMobile.Name}"
-            );
-
             return false;
         }
 
@@ -162,7 +133,7 @@ public class FaintPersistence
             FaintTable[playerMobile] = faint;
 
             logger.Debug(
-                $"Atribuido desmaio {faint.Faints} para a conta {playerMobile.Account.Username} para o personagem {playerMobile.Name}"
+                $"Atribuido desmaio {faint} para a conta {playerMobile.Account.Username} para o personagem {playerMobile.Name}"
             );
 
             return true;
@@ -186,22 +157,7 @@ public class FaintPersistence
             return null;
         }
 
-        return FaintTable[(PlayerMobile)mobile].Faints;
-    }
-
-    public static bool? GetRunningTimer(PlayerMobile mobile)
-    {
-        if (mobile is null)
-        {
-            return null;
-        }
-
-        if (!HasFaint(mobile))
-        {
-            return null;
-        }
-
-        return FaintTable[mobile].isRecoverFaintRunning;
+        return FaintTable[(PlayerMobile)mobile];
     }
 
     public static bool HasFaint(PlayerMobile playerMobile) => FaintTable.ContainsKey(playerMobile);

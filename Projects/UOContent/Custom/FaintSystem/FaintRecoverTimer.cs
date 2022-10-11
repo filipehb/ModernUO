@@ -23,12 +23,13 @@ public class FaintRecoverTimer : Timer
             return;
         }
 
-        if (FaintPersistence.GetPlayerFaint(_playerMobile) >= 4 || FaintPersistence.GetPlayerFaint(_playerMobile) == -1 || !(bool)FaintPersistence.GetRunningTimer(_playerMobile))
+        if (FaintPersistence.GetPlayerFaint(_playerMobile) >= 4 || FaintPersistence.GetPlayerFaint(_playerMobile) == -1 ||
+            !(bool)FaintTimerPersistence.GetPlayerFaintRunning(_playerMobile))
         {
             logger.Debug(
                 $"Timer de Faint foi parado para o player {_playerMobile.Account.Username} com o personagem {_playerMobile.Name}"
             );
-            FaintPersistence.SetRecoverFaintRunning(_playerMobile, false);
+            FaintTimerPersistence.SetFaintRunning(_playerMobile, false, true);
             Stop();
         }
 
