@@ -194,25 +194,34 @@ namespace Server
                 totalDamage = m.Hits;
             }
 
-            if (from?.Deleted == false && from.Alive)
+            var bcFrom = from as BaseCreature;
+
+            if (from is { Deleted: false, Alive: true })
             {
                 var reflectPhys = AosAttributes.GetValue(m, AosAttribute.ReflectPhysical);
+                var reflectPhysAbility = bcFrom?.GetAbility(MonsterAbilityType.ReflectPhysicalDamage) as ReflectPhysicalDamage;
 
-                if (reflectPhys != 0)
+                if (reflectPhysAbility
+                        ?.CanTrigger(bcFrom, MonsterAbilityTrigger.CombatAction) == true)
                 {
-                    if ((from as ExodusMinion)?.FieldActive == true ||
-                        (from as ExodusOverseer)?.FieldActive == true)
+                    reflectPhys += reflectPhysAbility.PercentReflected;
+                    m.SendLocalizedMessage(1070844); // The creature repels the attack back at you.
+                }
+
+                if (reflectPhys > 0)
+                {
+                    var reflectDamage = Scale(
+                        damage * phys * (100 - (ignoreArmor ? 0 : m.PhysicalResistance)) / 10000,
+                        reflectPhys
+                    );
+
+                    bcFrom
+                        ?.GetAbility(MonsterAbilityType.MagicalBarrier)
+                        ?.AlterMeleeDamageFrom(bcFrom, m, ref reflectDamage);
+
+                    if (reflectDamage > 0)
                     {
-                        from.FixedParticles(0x376A, 20, 10, 0x2530, EffectLayer.Waist);
-                        from.PlaySound(0x2F4);
-                        m.SendAsciiMessage("Your weapon cannot penetrate the creature's magical barrier");
-                    }
-                    else
-                    {
-                        from.Damage(
-                            Scale(damage * phys * (100 - (ignoreArmor ? 0 : m.PhysicalResistance)) / 10000, reflectPhys),
-                            m
-                        );
+                        from.Damage(reflectDamage, m);
                     }
                 }
             }
