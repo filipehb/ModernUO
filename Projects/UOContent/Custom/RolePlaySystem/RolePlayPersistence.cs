@@ -12,7 +12,7 @@ public class RolePlayPersistence
 
     public static void Configure()
     {
-        GenericPersistence.Register("RolePlayPoints", Serialize, Deserialize);
+        GenericPersistence.Register("RolePlayRate", Serialize, Deserialize);
     }
 
     public static void Serialize(IGenericWriter writer)
@@ -32,7 +32,7 @@ public class RolePlayPersistence
             }
         }
 
-        logger.Information("Salvo informações de RolePlayPoints");
+        logger.Information("Salvo informações de RolePlayRate");
     }
 
     public static void Deserialize(IGenericReader reader)
@@ -69,12 +69,12 @@ public class RolePlayPersistence
 
                             RolePlayTable[playerMobile] = RolePlayTableInner;
 
-                            logger.Information("Carregada informações de RolePlayPoints");
+                            logger.Information("Carregada informações de RolePlayRate");
                         }
                     }
                     catch (Exception e)
                     {
-                        logger.Error($"Erro ao carregar RolePlayPoints: {e.Message}");
+                        logger.Error($"Erro ao carregar RolePlayRate: {e.Message}");
                     }
 
                     break;
@@ -82,7 +82,7 @@ public class RolePlayPersistence
         }
     }
 
-    public static bool SetRolePlayPoint(PlayerMobile from, PlayerMobile target, int point, bool overwriteExisting)
+    public static bool SetRolePlayRate(PlayerMobile from, PlayerMobile target, int point, bool overwriteExisting)
     {
         if (from == null || target == null)
         {
@@ -101,7 +101,7 @@ public class RolePlayPersistence
             return true;
         }
 
-        if (!HasFaintRunning(target))
+        if (!HasRolePlayRate(target))
         {
             var RolePlayTableInner = new Dictionary<PlayerMobile, int>
             {
@@ -111,26 +111,26 @@ public class RolePlayPersistence
             RolePlayTable[target] = RolePlayTableInner;
 
             logger.Debug(
-                $"Atribuido RolePlayPoint {point} para a conta {target.Account.Username} para o personagem {target.Name}"
+                $"Atribuido RolePlayRate {point} para a conta {target.Account.Username} para o personagem {target.Name}"
             );
 
             return true;
         }
 
         logger.Debug(
-            $"Não foi possivel setar RolePlayPoint da conta {target.Account.Username} para o personagem {target.Name}"
+            $"Não foi possivel setar RolePlayRate da conta {target.Account.Username} para o personagem {target.Name}"
         );
         return false;
     }
 
-    public static int? GetPlayerRolePlayPoint(Mobile mobile)
+    public static int? GetPlayerRolePlayRate(Mobile mobile)
     {
         if (mobile is not PlayerMobile)
         {
             return null;
         }
 
-        if (!HasFaintRunning((PlayerMobile)mobile))
+        if (!HasRolePlayRate((PlayerMobile)mobile))
         {
             return null;
         }
@@ -149,5 +149,5 @@ public class RolePlayPersistence
         return points/count;
     }
 
-    public static bool HasFaintRunning(PlayerMobile playerMobile) => RolePlayTable.ContainsKey(playerMobile);
+    public static bool HasRolePlayRate(PlayerMobile playerMobile) => RolePlayTable.ContainsKey(playerMobile);
 }
