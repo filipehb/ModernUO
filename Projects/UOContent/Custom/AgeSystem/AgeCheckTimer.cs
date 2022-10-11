@@ -34,14 +34,12 @@ public class AgeCheckTimer : Timer
             if (state.Mobile.AccessLevel == AccessLevel.Player && state.Mobile.Alive && isGoingToDie &&
                 AgeUtils.IsLifeLimit(state.Mobile as PlayerMobile))
             {
-                PlayerMobile playerMobile = state.Mobile as PlayerMobile;
-                if (playerMobile != null)
+                if (state.Mobile is PlayerMobile playerMobile)
                 {
                     playerMobile.SendMessage(38, "Seu tempo por essas terras chegou ao fim");
                     playerMobile.SendMessage(38, AgeUtils.GenerateDeath());
                     playerMobile.Kill();
                     FaintPersistence.SetFaint(playerMobile, new Faint(-1, false), true);
-                    //TODO Adicionar ação de mover fantasma para algum local, deixa paralizado e sem conseguir falar
                 }
             }
             else

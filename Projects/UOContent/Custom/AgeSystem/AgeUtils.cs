@@ -14,12 +14,12 @@ public class AgeUtils
 
     public static double AgeInMonths(DateTime dataCriacao)
     {
-        return Math.Truncate((AgeInDays(dataCriacao) % 365) / 30);
+        return Math.Truncate(AgeInDays(dataCriacao) % 365 / 30);
     }
 
     public static double AgeInMonthsWithoutTrucate(DateTime dataCriacao)
     {
-        return (AgeInDays(dataCriacao) % 365) / 30;
+        return AgeInDays(dataCriacao) % 365 / 30;
     }
 
     public static string GenerateDeath()
@@ -27,9 +27,9 @@ public class AgeUtils
         var random = new System.Random();
         var resultList = new List<string>
         {
-            "Uma flecha atingiu seu peito e voce morreu", "Voce pisou onde nao devia e morreu",
-            "Algo caiu dos ceus e matou voce", "Voce faleceu de causas naturais",
-            "Voce sofreu uma combustao espontanea", "Lembra daquela unha encravada?"
+            "Uma flecha atingiu seu peito e você morreu", "Você pisou onde não devia e morreu",
+            "Algo caiu dos céus e foi bem em você", "Você faleceu de causas naturais",
+            "você sofreu uma combustão espontânea", "Lembra daquela unha encravada? Você morreu"
         };
         int index = random.Next(resultList.Count);
         return resultList[index];
@@ -37,57 +37,54 @@ public class AgeUtils
 
     public static bool IsLifeLimit(PlayerMobile playerMobile)
     {
-        /*switch (playerMobile.RaceCustom)
+        switch (RacePersistence.GetPlayerRace(playerMobile))
         {
-            case RacesCustom.Anao:
+            //TODO Precisa rever essas idades
+            case Races.Dwarve:
                 {
                     //Criança 01-14
                     //Jovem 15-29
                     //Adulto 30-174
                     //Velho 175-219
                     //Idoso +220
-                    playerMobile.Age = AgeInMonthsWithoutTrucate(playerMobile.CreationTime) * 100;
-                    return playerMobile.Age >= 220;
+                    int age = (int)AgePersistence.GetPlayerAge(playerMobile);
+                    return age >= 120;
                 }
                 break;
-            case RacesCustom.Hobbit:
+            case Races.Hobbit:
                 {
                     //Criança 01-09
                     //Jovem 10-32
                     //Adulto 33-79
                     //Velho 80-90
                     //Idoso +91
-                    playerMobile.Age = AgeInMonthsWithoutTrucate(playerMobile.CreationTime) * 100;
-                    return playerMobile.Age >= 90;
-                    return AgeInMonths(playerMobile.CreationTime) >= 2;
+                    int age = (int)AgePersistence.GetPlayerAge(playerMobile);
+                    return age >= 90;
                 }
                 break;
-            case RacesCustom.Humano:
+            case Races.Human:
                 {
                     //Criança 01-09
                     //Jovem 10-15
                     //Adulto 16-44
                     //Velho 45-59
                     //Idoso +55
-                    playerMobile.Age += AgeInMonthsWithoutTrucate(playerMobile.CreationTime) * 25;
-                    return playerMobile.Age >= 50;
-                    return AgeInMonths(playerMobile.CreationTime) >= 2;
+                    int age = (int)AgePersistence.GetPlayerAge(playerMobile);
+                    return age >= 60;
                 }
                 break;
-            case RacesCustom.Elfo:
+            case Races.Elve:
                 {
                     //Imortais para mortes naturais, talvez pensar em algo sobre isso
-                    playerMobile.Age = AgeInMonthsWithoutTrucate(playerMobile.CreationTime) * 100;
                     return false;
                 }
                 break;
-            case Races.Orc:
+            case Races.Uruk:
                 {
-                    return AgeInMonths(playerMobile.CreationTime) >= 1;
+                    return false;
                 }
             default:
                 return false;
-        }*/
-        return false;
+        }
     }
 }

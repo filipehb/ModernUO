@@ -1,4 +1,5 @@
 using System;
+using Server.Items;
 using Server.Logging;
 using Server.Mobiles;
 
@@ -16,9 +17,17 @@ public class FaintRecoverTimer : Timer
 
     protected override void OnTick()
     {
-        if (FaintPersistence.GetPlayerFaint(_playerMobile) >= 4 || FaintPersistence.GetPlayerFaint(_playerMobile) == -1)
+        if (_playerMobile.Corpse.Deleted || _playerMobile.Corpse is Corpse { Carved: true })
         {
-            logger.Debug($"Timer de Faint foi parado para o player {_playerMobile.Account.Username} com o personagem {_playerMobile.Name}");
+            _playerMobile.SendMessage("Você sente que sua ligação com seu corpo foi desfeita.");
+            return;
+        }
+
+        if (FaintPersistence.GetPlayerFaint(_playerMobile) >= 4 || FaintPersistence.GetPlayerFaint(_playerMobile) == -1 || !(bool)FaintPersistence.GetRunningTimer(_playerMobile))
+        {
+            logger.Debug(
+                $"Timer de Faint foi parado para o player {_playerMobile.Account.Username} com o personagem {_playerMobile.Name}"
+            );
             FaintPersistence.SetRecoverFaintRunning(_playerMobile, false);
             Stop();
         }

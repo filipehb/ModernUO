@@ -1,4 +1,5 @@
 using System;
+using Server.Items;
 using Server.Logging;
 using Server.Mobiles;
 
@@ -16,7 +17,32 @@ public class FaintTimer : Timer
 
     protected override void OnTick()
     {
-        //TODO Implementar a parte de reviver a pessoa
-        base.OnTick();
+        if (_playerMobile.Alive || _playerMobile.Corpse.Deleted || _playerMobile.Corpse is Corpse && (_playerMobile.Corpse as Corpse)!.Carved)
+        {
+            return;
+        }
+
+        foreach ( Item body in World.Items.Values )
+        {
+            if ( body is Corpse corpse )
+            {
+                if ( corpse.Owner == _playerMobile )
+                {
+                    _playerMobile.MoveToWorld(corpse.Location, Map.Felucca);
+                    _playerMobile.Resurrect();
+
+                    // TODO testar se está funcionando ao reviver deletar o deathrobe
+                    // TODO Talvez tenha que deletar o corpo tb
+                    foreach (Item item in _playerMobile.Items)
+                    {
+                        if (item is DeathRobe)
+                        {
+                            item.Delete();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

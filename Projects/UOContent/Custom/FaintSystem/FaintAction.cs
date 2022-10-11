@@ -1,3 +1,5 @@
+using System;
+using Server.Items;
 using Server.Mobiles;
 
 namespace Server.Custom.FaintSystem;
@@ -9,26 +11,51 @@ public class FaintUtils
         EventSink.PlayerDeath += OnDeath;
         EventSink.Disconnected += OnDisconnect;
         EventSink.Login += OnLogin;
+        EventSink.BandageTargetRequest += OnBandageTarget;
+    }
+
+    private static void OnBandageTarget(Mobile mobile, Item item, Mobile target)
+    {
+        if (target is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
+            FaintPersistence.GetPlayerFaint(playerMobile) > 0 && !playerMobile.Alive)
+        {
+            // TODO Fazer aqui a logica de reviver o player
+        }
     }
 
     private static void OnLogin(Mobile obj)
     {
-        throw new System.NotImplementedException();
+        if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
+            FaintPersistence.GetPlayerFaint(playerMobile) >= 0)
+        {
+            if (!(bool)FaintPersistence.GetRunningTimer(playerMobile))
+            {
+                FaintRecoverTimer faintRecoverTimer = new FaintRecoverTimer(playerMobile);
+                FaintPersistence.SetRecoverFaintRunning(playerMobile, true);
+                faintRecoverTimer.Start();
+            }
+
+            FaintTimer faintTimer = new FaintTimer(playerMobile);
+            faintTimer.Start();
+        }
     }
 
     private static void OnDisconnect(Mobile obj)
     {
-        throw new System.NotImplementedException();
+        if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
+            FaintPersistence.GetPlayerFaint(playerMobile) > 0 && !playerMobile.Alive)
+        {
+            FaintPersistence.SetRecoverFaintRunning(playerMobile, false);
+        }
     }
 
     private static void OnDeath(Mobile obj)
     {
-        PlayerMobile playerMobile = obj as PlayerMobile;
-        if (playerMobile != null && playerMobile.AccessLevel == AccessLevel.Player && FaintPersistence.GetPlayerFaint(playerMobile) > 0) //Se morrer com 0 pontos, é a morte definitiva
+        if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile && FaintPersistence.GetPlayerFaint(playerMobile) > 0) //Se morrer com 0 pontos, é a morte definitiva
         {
-            playerMobile.Frozen = true;
-            int oldLightLevel = playerMobile.LightLevel;
-            playerMobile.LightLevel = LightCycle.DungeonLevel;
+            Corpse playerMobileCorpse = playerMobile.Corpse as Corpse;
+            // O corpo vai sumir por padrão após 5 dias, assim evitando corpos espalhados pelo mapa
+            playerMobileCorpse?.BeginDecay(TimeSpan.FromDays(5));
 
             FaintPersistence.DecreaseFaint(playerMobile);
 
@@ -43,13 +70,8 @@ public class FaintUtils
             FaintTimer faintTimer = new FaintTimer(playerMobile);
             faintTimer.Start();
 
-            var playerMobileLocation = playerMobile.Location;     //Salva a localização dele, antes de mover
-            playerMobile.MoveToWorld(new Point3D(), Map.Felucca); //Move ele para algum outra região
-            playerMobile.MoveToWorld(playerMobileLocation, Map.Felucca);
-            //TODO Fazer o tratamento para reviver e mandar a pessoa para o local certo
-            playerMobile.Resurrect();
-            playerMobile.Frozen = false;
-            playerMobile.LightLevel = oldLightLevel;
+            // TODO Mover o player morto para algum outro local no mapa
+            // playerMobile.MoveToWorld(playerMobileLocation, Map.Felucca);
         }
     }
 }
