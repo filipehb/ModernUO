@@ -11,13 +11,8 @@ namespace UOContent.Tests.Tests.Custom.RolePlaySystem;
 
 public class RolePlayPersistenceTests : IClassFixture<ServerFixture>
 {
-    [Theory]
-    [InlineData(1, 2, 2, 1)]
-    [InlineData(1, 2, 0, 1)]
-    [InlineData(3, 2, 1, 1)]
-    [InlineData(5, 5, 5, 5)]
-    [InlineData(0, 0, 0, 0)]
-    public void TestGetPlayerRolePlayRate(int rate1, int rate2, int rate3, int mean)
+    [Fact]
+    public void TestGetPlayerRolePlayRate()
     {
         var from1 = new PlayerMobile();
         var from2 = new PlayerMobile();
@@ -25,10 +20,11 @@ public class RolePlayPersistenceTests : IClassFixture<ServerFixture>
         var target = new PlayerMobile();
         IAccount account = new Account((Serial)0x3000);
         target.Account = account;
-        target.Name = "adsdas";
-        RolePlayPersistence.SetRolePlayRate(from1, target, rate1, false);
-        RolePlayPersistence.SetRolePlayRate(from2, target, rate2, false);
-        RolePlayPersistence.SetRolePlayRate(from3, target, rate3, false);
-        Assert.Equal(mean, RolePlayPersistence.GetPlayerRolePlayRate(target));
+        target.Name = "aaaaaa";
+        //Todo Investigar pq o modelo dic innerDic tá sobrescrevendo o outro resultado. Nesse cenárip fica sempre o 3 como rate e como media, pq ele é o final e a media
+        RolePlayPersistence.SetRolePlayRate(from1, target, 1, true);
+        RolePlayPersistence.SetRolePlayRate(from2, target, 2, true);
+        RolePlayPersistence.SetRolePlayRate(from3, target, 3, true);
+        Assert.Equal(2, RolePlayPersistence.GetPlayerRolePlayRate(target));
     }
 }
