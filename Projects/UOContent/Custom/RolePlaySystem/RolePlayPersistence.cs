@@ -82,10 +82,18 @@ public class RolePlayPersistence
         }
     }
 
-    public static bool SetRolePlayRate(PlayerMobile from, PlayerMobile target, int point, bool overwriteExisting)
+    public static bool SetRolePlayRate(PlayerMobile from, PlayerMobile target, int rate, bool overwriteExisting)
     {
         if (from == null || target == null)
         {
+            return false;
+        }
+
+        if (rate > 5 || rate < 0)
+        {
+            logger.Debug(
+                $"Atribuido valor inválido de RolePlayRate {rate} para a conta {target.Account.Username} para o personagem {target.Name}"
+            );
             return false;
         }
 
@@ -93,7 +101,7 @@ public class RolePlayPersistence
         {
             var RolePlayTableInner = new Dictionary<PlayerMobile, int>
             {
-                [from] = point
+                [from] = rate
             };
 
             RolePlayTable[target] = RolePlayTableInner;
@@ -105,13 +113,13 @@ public class RolePlayPersistence
         {
             var RolePlayTableInner = new Dictionary<PlayerMobile, int>
             {
-                [from] = point
+                [from] = rate
             };
 
             RolePlayTable[target] = RolePlayTableInner;
 
             logger.Debug(
-                $"Atribuido RolePlayRate {point} para a conta {target.Account.Username} para o personagem {target.Name}"
+                $"Atribuido RolePlayRate {rate} para a conta {target.Account.Username} para o personagem {target.Name}"
             );
 
             return true;
