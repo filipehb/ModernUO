@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Logging;
 using Server.Mobiles;
 
@@ -7,7 +8,7 @@ namespace Server.Custom.RolePlaySystem;
 
 public class RolePlayPersistence
 {
-    private static Dictionary<PlayerMobile, Dictionary<PlayerMobile, int>> RolePlayTable = new();
+    private static Dictionary<PlayerMobile, List<Dictionary<PlayerMobile, int>>> RolePlayTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(RolePlayPersistence));
 
     public static void Configure()
@@ -25,10 +26,14 @@ public class RolePlayPersistence
         foreach (var kvp in RolePlayTable)
         {
             writer.Write(kvp.Key);
-            foreach (var kvpInner in kvp.Value)
+            writer.Write(kvp.Value.Count); //Tamanho da lista com as notas
+            foreach (var listDictionary in kvp.Value)
             {
-                writer.Write(kvpInner.Key);
-                writer.Write(kvpInner.Value);
+                foreach (var kvpInner in listDictionary)
+                {
+                    writer.Write(kvpInner.Key);
+                    writer.Write(kvpInner.Value);
+                }
             }
         }
 
@@ -50,27 +55,37 @@ public class RolePlayPersistence
                 {
                     int tableCount = reader.ReadInt();
 
-                    RolePlayTable = new Dictionary<PlayerMobile, Dictionary<PlayerMobile, int>>();
+                    RolePlayTable = new Dictionary<PlayerMobile, List<Dictionary<PlayerMobile, int>>>();
 
                     try
                     {
                         for (int i = 0; i < tableCount; i++)
                         {
                             var playerMobile = reader.ReadEntity<PlayerMobile>();
+                            int listOfRatesCount = reader.ReadInt();
                             if (playerMobile == null || playerMobile.Deleted)
                             {
                                 continue;
                             }
 
-                            var RolePlayTableInner = new Dictionary<PlayerMobile, int>
+                            var listRates = new List<Dictionary<PlayerMobile, int>>();
+
+                            for (int index = 0; index < listOfRatesCount; index++)
                             {
-                                [reader.ReadEntity<PlayerMobile>()] = reader.ReadInt()
-                            };
+                                var RolePlayTableInner = new Dictionary<PlayerMobile, int>
+                                {
+                                    [reader.ReadEntity<PlayerMobile>()] = reader.ReadInt()
+                                };
+                                listRates.Add(RolePlayTableInner);
+                            }
 
-                            RolePlayTable[playerMobile] = RolePlayTableInner;
-
-                            logger.Information("Carregada informações de RolePlayRate");
+                            RolePlayTable[playerMobile] = listRates;
+                            logger.Debug(
+                                $"Carregada informações de RolePlayRate para a conta {playerMobile.Account.Username}"
+                            );
                         }
+
+                        logger.Information("Carregada informações de RolePlayRate");
                     }
                     catch (Exception e)
                     {
@@ -82,7 +97,7 @@ public class RolePlayPersistence
         }
     }
 
-    public static bool SetRolePlayRate(PlayerMobile from, PlayerMobile target, int rate, bool overwriteExisting)
+    public static bool SetRolePlayRate(PlayerMobile from, PlayerMobile target, int rate)
     {
         if (from == null || target == null)
         {
@@ -97,38 +112,41 @@ public class RolePlayPersistence
             return false;
         }
 
-        if (overwriteExisting)
-        {
-            var RolePlayTableInner = new Dictionary<PlayerMobile, int>
-            {
-                [from] = rate
-            };
-
-            RolePlayTable[target] = RolePlayTableInner;
-
-            return true;
-        }
-
         if (!HasRolePlayRate(target))
         {
-            var RolePlayTableInner = new Dictionary<PlayerMobile, int>
-            {
-                [from] = rate
-            };
-
-            RolePlayTable[target] = RolePlayTableInner;
+            var list = new List<Dictionary<PlayerMobile, int>>();
+            RolePlayTable.Add(target, list);
 
             logger.Debug(
-                $"Atribuido RolePlayRate {rate} para a conta {target.Account.Username} para o personagem {target.Name}"
+                $"Atribuido RolePlayRate para a conta {target.Account.Username} para o personagem {target.Name}"
             );
-
-            return true;
         }
 
+        var RolePlayTableInner = new Dictionary<PlayerMobile, int>
+        {
+            [from] = rate
+        };
+
+        foreach (Dictionary<PlayerMobile, int> dictionary in RolePlayTable[target])
+        {
+            if (dictionary.ContainsKey(from))
+            {
+                dictionary[from] = rate;
+                logger.Debug(
+                    $"Trocado o valor RolePlayRate {rate} para a conta {target.Account.Username} para o personagem {target.Name}"
+                );
+
+                return true;
+            }
+        }
+
+        RolePlayTable[target].Add(RolePlayTableInner);
+
         logger.Debug(
-            $"Não foi possivel setar RolePlayRate da conta {target.Account.Username} para o personagem {target.Name}"
+            $"Atribuido RolePlayRate {rate} para a conta {target.Account.Username} para o personagem {target.Name}"
         );
-        return false;
+
+        return true;
     }
 
     public static int? GetPlayerRolePlayRate(Mobile mobile)
@@ -143,18 +161,16 @@ public class RolePlayPersistence
             return null;
         }
 
-        var count = RolePlayTable.Count;
         var points = 0;
 
         foreach (var kvp in RolePlayTable)
         {
-            foreach (var kvpInner in kvp.Value)
-            {
-                points += kvpInner.Value;
-            }
+            var count = kvp.Value.Count;
+            points += kvp.Value.SelectMany(listDictionary => listDictionary).Sum(kvpInner => kvpInner.Value);
+            return points / count;
         }
 
-        return points/count;
+        return 0;
     }
 
     public static bool HasRolePlayRate(PlayerMobile playerMobile) => RolePlayTable.ContainsKey(playerMobile);
