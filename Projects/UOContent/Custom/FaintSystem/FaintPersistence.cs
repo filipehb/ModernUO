@@ -149,12 +149,12 @@ public class FaintPersistence
     {
         if (mobile is not PlayerMobile)
         {
-            return 0;
+            return -1;
         }
 
         if (!HasFaint((PlayerMobile)mobile))
         {
-            return 0;
+            return -1;
         }
 
         return FaintTable[(PlayerMobile)mobile];

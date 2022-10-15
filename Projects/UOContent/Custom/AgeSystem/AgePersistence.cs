@@ -122,12 +122,12 @@ public class AgePersistence
     {
         if (mobile is not PlayerMobile)
         {
-            return 0;
+            return -1;
         }
 
         if (!HasAge((PlayerMobile)mobile))
         {
-            return 0;
+            return -1;
         }
 
         return AgeTable[(PlayerMobile)mobile];
