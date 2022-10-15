@@ -102,16 +102,16 @@ public class ClassPersistence
         return false;
     }
 
-    public static Classes? GetPlayerClass(Mobile mobile)
+    public static Classes GetPlayerClass(Mobile mobile)
     {
         if (mobile is not PlayerMobile)
         {
-            return null;
+            return Classes.None;
         }
 
         if (!HasClass((PlayerMobile)mobile))
         {
-            return null;
+            return Classes.None;
         }
 
         return ClassTable[(PlayerMobile)mobile];

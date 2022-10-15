@@ -2,6 +2,7 @@ namespace Server.Custom.Classes;
 
 public enum Classes
 {
+    None = 0,
     Scholar = 1,
     MasterHealer = 11,
     MasterScholar = 12,
