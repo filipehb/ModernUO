@@ -1,7 +1,6 @@
 using System;
 using Server;
 using Server.Accounting;
-using Server.Custom.AgeSystem;
 using Server.Custom.RolePlaySystem;
 using Server.Mobiles;
 using Server.Tests;
@@ -9,6 +8,7 @@ using Xunit;
 
 namespace UOContent.Tests.Tests.Custom.RolePlaySystem;
 
+[Collection("Sequential Tests")]
 public class RolePlayPersistenceTests : IClassFixture<ServerFixture>
 {
     [Fact]
@@ -19,7 +19,7 @@ public class RolePlayPersistenceTests : IClassFixture<ServerFixture>
         var from2 = new PlayerMobile();
         var from3 = new PlayerMobile();
         var target = new PlayerMobile();
-        IAccount account = new Account((Serial)0x3000);
+        IAccount account = new Account((Serial)Random.Shared.NextInt64());
         target.Account = account;
         target.Name = "aaaaaa";
 
@@ -30,5 +30,36 @@ public class RolePlayPersistenceTests : IClassFixture<ServerFixture>
 
         // Then
         Assert.Equal(2, RolePlayPersistence.GetPlayerRolePlayRate(target));
+    }
+
+    [Fact]
+    public void TestGetPlayerRolePlayRateInvalidRate()
+    {
+        // Given
+        var target = new PlayerMobile();
+        IAccount account = new Account((Serial)Random.Shared.NextInt64());
+        target.Account = account;
+        target.Name = "aaaaaa";
+
+        // When
+        var from1 = new PlayerMobile();
+
+        // Then
+        Assert.False(RolePlayPersistence.SetRolePlayRate(from1, target, -1));
+    }
+
+    [Fact]
+    public void TestGetPlayerRolePlayRateEmpty()
+    {
+        // Given
+        var target = new PlayerMobile();
+
+        // When
+        IAccount account = new Account((Serial)0x3030);
+        target.Account = account;
+        target.Name = "aaaaaa";
+
+        // Then
+        Assert.Null(RolePlayPersistence.GetPlayerRolePlayRate(target));
     }
 }

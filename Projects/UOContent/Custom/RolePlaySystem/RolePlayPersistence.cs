@@ -149,14 +149,14 @@ public class RolePlayPersistence
         return true;
     }
 
-    public static int? GetPlayerRolePlayRate(Mobile mobile)
+    public static int? GetPlayerRolePlayRate(PlayerMobile mobile)
     {
-        if (mobile is not PlayerMobile)
+        if (mobile is not not null)
         {
             return null;
         }
 
-        if (!HasRolePlayRate((PlayerMobile)mobile))
+        if (!HasRolePlayRate(mobile))
         {
             return null;
         }
@@ -165,9 +165,12 @@ public class RolePlayPersistence
 
         foreach (var kvp in RolePlayTable)
         {
-            var count = kvp.Value.Count;
-            points += kvp.Value.SelectMany(listDictionary => listDictionary).Sum(kvpInner => kvpInner.Value);
-            return points / count;
+            if (kvp.Key == mobile)
+            {
+                var count = kvp.Value.Count;
+                points += kvp.Value.SelectMany(listDictionary => listDictionary).Sum(kvpInner => kvpInner.Value);
+                return points / count;
+            }
         }
 
         return 0;
