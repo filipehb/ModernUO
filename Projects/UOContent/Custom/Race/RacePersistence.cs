@@ -105,16 +105,16 @@ public class RacePersistence
         return false;
     }
 
-    public static Races? GetPlayerRace(Mobile mobile)
+    public static Races GetPlayerRace(Mobile mobile)
     {
         if (mobile is not PlayerMobile)
         {
-            return null;
+            return Races.None;
         }
 
         if (!HasRace((PlayerMobile)mobile))
         {
-            return null;
+            return Races.None;
         }
 
         return RaceTable[(PlayerMobile)mobile];

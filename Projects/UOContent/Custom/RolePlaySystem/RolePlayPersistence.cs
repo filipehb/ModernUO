@@ -149,16 +149,16 @@ public class RolePlayPersistence
         return true;
     }
 
-    public static int? GetPlayerRolePlayRate(PlayerMobile mobile)
+    public static int GetPlayerRolePlayRate(PlayerMobile mobile)
     {
         if (mobile is not not null)
         {
-            return null;
+            return 0;
         }
 
         if (!HasRolePlayRate(mobile))
         {
-            return null;
+            return 0;
         }
 
         var points = 0;

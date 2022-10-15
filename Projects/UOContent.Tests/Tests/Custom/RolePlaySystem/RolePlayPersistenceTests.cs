@@ -60,6 +60,6 @@ public class RolePlayPersistenceTests : IClassFixture<ServerFixture>
         target.Name = "aaaaaa";
 
         // Then
-        Assert.Null(RolePlayPersistence.GetPlayerRolePlayRate(target));
+        Assert.Equal(0, RolePlayPersistence.GetPlayerRolePlayRate(target));
     }
 }

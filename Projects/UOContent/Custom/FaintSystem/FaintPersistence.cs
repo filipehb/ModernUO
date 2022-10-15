@@ -145,16 +145,16 @@ public class FaintPersistence
         return false;
     }
 
-    public static int? GetPlayerFaint(Mobile mobile)
+    public static int GetPlayerFaint(Mobile mobile)
     {
         if (mobile is not PlayerMobile)
         {
-            return null;
+            return 0;
         }
 
         if (!HasFaint((PlayerMobile)mobile))
         {
-            return null;
+            return 0;
         }
 
         return FaintTable[(PlayerMobile)mobile];

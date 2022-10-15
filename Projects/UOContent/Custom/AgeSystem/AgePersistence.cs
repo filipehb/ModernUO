@@ -118,16 +118,16 @@ public class AgePersistence
         }
     }
 
-    public static int? GetPlayerAge(Mobile mobile)
+    public static int GetPlayerAge(Mobile mobile)
     {
         if (mobile is not PlayerMobile)
         {
-            return null;
+            return 0;
         }
 
         if (!HasAge((PlayerMobile)mobile))
         {
-            return null;
+            return 0;
         }
 
         return AgeTable[(PlayerMobile)mobile];

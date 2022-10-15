@@ -28,7 +28,7 @@ public class FaintUtils
         if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
             FaintPersistence.GetPlayerFaint(playerMobile) >= 0)
         {
-            if (!(bool)FaintTimerPersistence.GetPlayerFaintRunning(playerMobile))
+            if (!FaintTimerPersistence.GetPlayerFaintRunning(playerMobile))
             {
                 FaintRecoverTimer faintRecoverTimer = new FaintRecoverTimer(playerMobile);
                 FaintTimerPersistence.SetFaintRunning(playerMobile, true, true);

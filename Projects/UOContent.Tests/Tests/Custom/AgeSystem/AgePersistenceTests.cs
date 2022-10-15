@@ -1,18 +1,18 @@
 using System;
 using Server;
 using Server.Accounting;
-using Server.Custom.FaintSystem;
+using Server.Custom.AgeSystem;
 using Server.Mobiles;
 using Server.Tests;
 using Xunit;
 
-namespace UOContent.Tests.Tests.Custom.FaintSystem;
+namespace UOContent.Tests.Tests.Custom.AgeSystem;
 
 [Collection("Sequential Tests")]
-public class FaintTimerPersistenceTests : IClassFixture<ServerFixture>
+public class AgePersistenceTests : IClassFixture<ServerFixture>
 {
     [Fact]
-    public void TestGetFaintTimerPersistence()
+    public void TestGetAge()
     {
         var target = new PlayerMobile();
         IAccount account = new Account((Serial)Random.Shared.NextInt64());
@@ -29,13 +29,13 @@ public class FaintTimerPersistenceTests : IClassFixture<ServerFixture>
         target3.Account = account3;
         target3.Name = "target3";
 
-        FaintTimerPersistence.SetFaintRunning(target, false, false);
-        FaintTimerPersistence.SetFaintRunning(target2, true, false);
-        FaintTimerPersistence.SetFaintRunning(target3, false, false);
+        AgePersistence.SetAge(target, 16, false);
+        AgePersistence.SetAge(target2, 22, false);
+        AgePersistence.SetAge(target3, 1000, false);
 
-        Assert.True(FaintTimerPersistence.GetPlayerFaintRunning(target2));
-        Assert.False(FaintTimerPersistence.GetPlayerFaintRunning(target));
-        Assert.False(FaintTimerPersistence.GetPlayerFaintRunning(target3));
+        Assert.Equal(22, AgePersistence.GetPlayerAge(target2));
+        Assert.Equal(16, AgePersistence.GetPlayerAge(target));
+        Assert.Equal(1000, AgePersistence.GetPlayerAge(target3));
     }
 
     [Fact]
@@ -46,10 +46,10 @@ public class FaintTimerPersistenceTests : IClassFixture<ServerFixture>
         target.Account = account;
         target.Name = "target";
 
-        FaintTimerPersistence.SetFaintRunning(target, true, false);
-        FaintTimerPersistence.SetFaintRunning(target, false, true);
+        AgePersistence.SetAge(target, 17, false);
+        AgePersistence.SetAge(target, 177, true);
 
-        Assert.False(FaintTimerPersistence.GetPlayerFaintRunning(target));
+        Assert.Equal(177,AgePersistence.GetPlayerAge(target));
     }
 
     [Fact]
@@ -60,9 +60,9 @@ public class FaintTimerPersistenceTests : IClassFixture<ServerFixture>
         target.Account = account;
         target.Name = "target";
 
-        FaintTimerPersistence.SetFaintRunning(target, true, false);
+        AgePersistence.SetAge(target, 16, false);
 
-        Assert.False(FaintTimerPersistence.SetFaintRunning(target, false, false));
-        Assert.True(FaintTimerPersistence.GetPlayerFaintRunning(target));
+        Assert.False(AgePersistence.SetAge(target, 2000, false));
+        Assert.Equal(16, AgePersistence.GetPlayerAge(target));
     }
 }
