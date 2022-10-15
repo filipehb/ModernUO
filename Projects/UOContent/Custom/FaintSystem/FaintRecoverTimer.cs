@@ -24,7 +24,7 @@ public class FaintRecoverTimer : Timer
         }
 
         if (FaintPersistence.GetPlayerFaint(_playerMobile) >= 4 || FaintPersistence.GetPlayerFaint(_playerMobile) == -1 ||
-            !(bool)FaintTimerPersistence.GetPlayerFaintRunning(_playerMobile))
+            !FaintTimerPersistence.GetPlayerFaintRunning(_playerMobile))
         {
             logger.Debug(
                 $"Timer de Faint foi parado para o player {_playerMobile.Account.Username} com o personagem {_playerMobile.Name}"

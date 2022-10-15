@@ -4,7 +4,7 @@ using Server.Mobiles;
 
 namespace Server.Custom.FaintSystem;
 
-public class FaintUtils
+public class FaintAction
 {
     public static void Initialize()
     {
@@ -35,15 +35,18 @@ public class FaintUtils
                 faintRecoverTimer.Start();
             }
 
-            FaintTimer faintTimer = new FaintTimer(playerMobile);
-            faintTimer.Start();
+            if (!playerMobile.Alive)
+            {
+                FaintTimer faintTimer = new FaintTimer(playerMobile);
+                faintTimer.Start();
+            }
         }
     }
 
     private static void OnDisconnect(Mobile obj)
     {
         if (obj is PlayerMobile { AccessLevel: AccessLevel.Player } playerMobile &&
-            FaintPersistence.GetPlayerFaint(playerMobile) > 0 && !playerMobile.Alive)
+            FaintPersistence.GetPlayerFaint(playerMobile) >= 0 && !playerMobile.Alive)
         {
             FaintTimerPersistence.SetFaintRunning(playerMobile, false, true);
         }
@@ -60,7 +63,7 @@ public class FaintUtils
             FaintPersistence.DecreaseFaint(playerMobile);
 
 
-            if (!(bool)FaintTimerPersistence.GetPlayerFaintRunning(playerMobile))
+            if (!FaintTimerPersistence.GetPlayerFaintRunning(playerMobile))
             {
                 FaintRecoverTimer faintRecoverTimer = new FaintRecoverTimer(playerMobile);
                 FaintTimerPersistence.SetFaintRunning(playerMobile, true, true);

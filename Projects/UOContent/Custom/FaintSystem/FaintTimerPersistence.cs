@@ -108,12 +108,12 @@ public class FaintTimerPersistence
     {
         if (mobile is not PlayerMobile)
         {
-            return false;
+            return true;
         }
 
         if (!HasFaintRunning((PlayerMobile)mobile))
         {
-            return false;
+            return true;
         }
 
         return FaintRunningTable[(PlayerMobile)mobile];
