@@ -79,7 +79,7 @@ public partial class Timer
 
     public Timer Start()
     {
-        if (World.WorldState is WorldState.Initial or WorldState.Saving)
+        if (World.WorldState is WorldState.Saving)
         {
             logger.Error(
                 "Attempted to start timer {Timer} ({HashCode}) while world is {State}\n{StackTrace}",
@@ -123,7 +123,7 @@ public partial class Timer
 
     public void Stop()
     {
-        if (World.WorldState is WorldState.Initial or WorldState.Saving)
+        if (World.WorldState is WorldState.Saving)
         {
             logger.Error(
                 "Attempted to stop timer {Timer} ({HashCode}) while world is {State}\n{StackTrace}",
@@ -153,20 +153,22 @@ public partial class Timer
 
         Running = false;
 
-        // Do not detach if we are in the middle of executing the timer wheel for this ring/slot
-        if (!_timerWheelExecuting || _ringIndexes[_ring] != _slot)
+        // We are the head on the timer ring
+        if (_rings[_ring][_slot] == this)
         {
-            // We are at the head
-            if (_rings[_ring][_slot] == this)
-            {
-                _rings[_ring][_slot] = _nextTimer;
-            }
-
-            Detach();
-            OnDetach();
+            _rings[_ring][_slot] = _nextTimer;
         }
 
+        // We are the head on the executing ring
+        if (_executingRings[_ring] == this)
+        {
+            _executingRings[_ring] = _nextTimer;
+        }
+
+        Detach();
+
         Version++;
+        OnDetach();
 
         var prof = GetProfile();
         if (prof != null)
