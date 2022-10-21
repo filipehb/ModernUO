@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'microsoft'
-          java-version: '8'
+          java-version: '11'
 
       # Speed-up analysis by caching the scanner workspace
       - name: Cache SonarCloud workspace
