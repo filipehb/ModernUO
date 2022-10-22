@@ -12,6 +12,12 @@ namespace UOContent.Tests.Tests.Custom.Classes;
 public class ClassPersistenceTests : IClassFixture<ServerFixture>
 {
     [Fact]
+    public void TestClassesSize()
+    {
+        Assert.Equal(20, Enum.GetNames(typeof(Server.Custom.Classes.Classes)).Length);
+    }
+
+    [Fact]
     public void TestGetClassPersistence()
     {
         var target = new PlayerMobile();
