@@ -21,5 +21,5 @@ public enum Classes
     Bounder = 53,
     Warrior = 6,
     Knight = 61,
-    Weaponmaster = 62
+    WeaponMaster = 62
 }
