@@ -1,0 +1,68 @@
+name: Sonar
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
+
+      - name: Setup .NET 6
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 6.0.401
+
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'microsoft'
+          java-version: '11'
+
+      # Speed-up analysis by caching the scanner workspace
+      - name: Cache SonarCloud workspace
+        uses: actions/cache@v3
+        with:
+          path: ~\.sonar\cache
+          key: ${{ runner.os }}-sonar-cache
+          restore-keys: ${{ runner.os }}-sonar-cache
+
+      # Speed-up analysis by caching the scanner installation
+      - name: Cache SonarCloud scanner
+        id: cache-sonar-scanner
+        uses: actions/cache@v3
+        with:
+          path: .\.sonar\scanner
+          key: ${{ runner.os }}-sonar-scanner
+          restore-keys: ${{ runner.os }}-sonar-scanner
+
+      - name: Install SonarCloud scanner
+        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+        shell: powershell
+        # The --version argument is optional. If it is omitted the latest version will be installed.
+        run: |
+          New-Item -Path .\.sonar\scanner -ItemType Directory
+          dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+#          dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner --version 4.8.0
+
+      - name: Install dotnet cover
+        run: dotnet tool install --global dotnet-coverage
+
+      - name: Generate Coverage
+        run: dotnet-coverage collect 'dotnet test' -f xml -o 'coverage.xml'
+
+      - name: Scan Project And Publish In Sonar
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          .\.sonar\scanner\dotnet-sonarscanner begin /k:"filipehb_ModernUO" /o:"filipehb" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.verbose=true /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
+          dotnet build ModernUO.sln
+          .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"

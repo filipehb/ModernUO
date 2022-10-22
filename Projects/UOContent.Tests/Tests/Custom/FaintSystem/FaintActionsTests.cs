@@ -12,22 +12,6 @@ namespace UOContent.Tests.Tests.Custom.FaintSystem;
 public class FaintActionsTests : IClassFixture<ServerFixture>
 {
     [Fact]
-    public void TestPlayerDeath()
-    {
-        var target = new PlayerMobile();
-        IAccount account = new Account((Serial)Random.Shared.NextInt64());
-        target.Account = account;
-        target.Name = "target";
-
-        FaintPersistence.SetFaint(target, 3, false);
-        FaintAction.Initialize();
-
-        EventSink.InvokePlayerDeath(target);
-
-        Assert.Equal(2, FaintPersistence.GetPlayerFaint(target));
-    }
-
-    [Fact]
     public void TestPlayerDisconnect()
     {
         var target = new PlayerMobile();
