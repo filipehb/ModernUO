@@ -1,6 +1,6 @@
 namespace Server.Custom.Classes;
 
-public class Proficiencie
+public class WeaponProficiencie
 {
     
 }
