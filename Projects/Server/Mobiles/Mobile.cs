@@ -329,6 +329,7 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
     private int m_WarmodeChanges;
     private bool _warmodeSpamValue;
     private IWeapon m_Weapon;
+    private bool _ignoreMobiles;
 
     private bool m_YellowHealthbar;
     private List<StatMod> _statMods;
@@ -404,6 +405,20 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
     public static int MaxPlayerResistance { get; set; } = 70;
 
     public virtual bool NewGuildDisplay => false;
+
+    [CommandProperty(AccessLevel.GameMaster)]
+    public virtual bool IgnoreMobiles
+    {
+        get => _ignoreMobiles;
+        set
+        {
+            if (_ignoreMobiles != value)
+            {
+                _ignoreMobiles = value;
+                Delta(MobileDelta.Flags);
+            }
+        }
+    }
 
     public List<Mobile> Stabled { get; private set; }
 
@@ -1553,7 +1568,7 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
                 return m_BankBox;
             }
 
-            m_BankBox = FindItemOnLayer(Layer.Bank) as BankBox;
+            m_BankBox = FindItemOnLayer<BankBox>(Layer.Bank);
 
             if (m_BankBox == null)
             {
@@ -1571,7 +1586,7 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
         {
             if (m_Backpack?.Deleted != false || m_Backpack.Parent != this)
             {
-                m_Backpack = FindItemOnLayer(Layer.Backpack) as Container;
+                m_Backpack = FindItemOnLayer<Container>(Layer.Backpack);
             }
 
             return m_Backpack;
@@ -6974,6 +6989,11 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
             flags |= 0x08;
         }
 
+        if (IgnoreMobiles)
+        {
+            flags |= 0x10;
+        }
+
         if (m_Warmode)
         {
             flags |= 0x40;
@@ -7385,11 +7405,14 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
     {
         if (m_BankBox?.Deleted != false || m_BankBox.Parent != this)
         {
-            m_BankBox = FindItemOnLayer(Layer.Bank) as BankBox;
+            m_BankBox = FindItemOnLayer<BankBox>(Layer.Bank);
         }
 
         return m_BankBox;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T FindItemOnLayer<T>(Layer layer) where T : Item => FindItemOnLayer(layer) as T;
 
     public Item FindItemOnLayer(Layer layer)
     {
@@ -7400,6 +7423,7 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
         {
             var item = eq[i];
 
+            // TODO: We only allow 1 item per layer. It's an implicit contract.
             if (!item.Deleted && item.Layer == layer)
             {
                 return item;
@@ -7443,15 +7467,8 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
         eable.Free();
     }
 
-    public bool PlaceInBackpack(Item item)
-    {
-        if (item.Deleted)
-        {
-            return false;
-        }
-
-        return Backpack?.TryDropItem(this, item, false) == true;
-    }
+    public bool PlaceInBackpack(Item item) =>
+        !item.Deleted && Backpack?.TryDropItem(this, item, false) == true;
 
     public bool AddToBackpack(Item item)
     {
@@ -7484,10 +7501,8 @@ public class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPropertyLis
         from == this || from.AccessLevel > AccessLevel && from.AccessLevel >= AccessLevel.GameMaster;
 
     public virtual bool CheckTrade(
-        Mobile to, Item item, SecureTradeContainer cont, bool message, bool checkItems,
-        int plusItems, int plusWeight
-    ) =>
-        true;
+        Mobile to, Item item, SecureTradeContainer cont, bool message, bool checkItems, int plusItems, int plusWeight
+    ) => true;
 
     public virtual bool OpenTrade(Mobile from, Item offer = null)
     {
