@@ -20,7 +20,7 @@ namespace Server;
 [Parsable]
 public struct Point2D
     : IPoint2D, IComparable<Point2D>, IComparable<IPoint2D>, IEquatable<object>, IEquatable<Point2D>,
-        IEquatable<IPoint2D>
+        IEquatable<IPoint2D>, ISpanFormattable
 {
     internal int m_X;
     internal int m_Y;
@@ -51,8 +51,6 @@ public struct Point2D
     {
     }
 
-    public override string ToString() => $"({m_X}, {m_Y})";
-
     public static Point2D Parse(string value)
     {
         var start = value.IndexOfOrdinal('(');
@@ -70,8 +68,7 @@ public struct Point2D
 
     public bool Equals(Point2D other) => m_X == other.m_X && m_Y == other.m_Y;
 
-    public bool Equals(IPoint2D other) =>
-        m_X == other?.X && m_Y == other.Y;
+    public bool Equals(IPoint2D other) => m_X == other?.X && m_Y == other.Y;
 
     public override bool Equals(object obj) => obj is Point2D other && Equals(other);
 
@@ -111,5 +108,26 @@ public struct Point2D
     {
         var xComparison = m_X.CompareTo(other.X);
         return xComparison != 0 ? xComparison : m_Y.CompareTo(other.Y);
+    }
+
+    public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider provider)
+        => destination.TryWrite(provider, $"({m_X}, {m_Y})", out charsWritten);
+
+    public override string ToString()
+    {
+        // Maximum number of characters that are needed to represent this:
+        // 4 characters for (, )
+        // Up to 11 characters to represent each integer
+        const int maxLength = 4 + 11 * 2;
+        Span<char> span = stackalloc char[maxLength];
+        TryFormat(span, out var charsWritten, null, null);
+        return span[..charsWritten].ToString();
+    }
+
+    public string ToString(string format, IFormatProvider formatProvider)
+    {
+        // format and formatProvider are not doing anything right now, so use the
+        // default ToString implementation.
+        return ToString();
     }
 }
