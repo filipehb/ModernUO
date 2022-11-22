@@ -3826,7 +3826,7 @@ namespace Server.Mobiles
                 for (var i = 0; i < pm.AllFollowers.Count; i++)
                 {
                     var m = pm.AllFollowers[i];
-                    if (master.InRange(m, 3) && m is BaseCreature
+                    if (m.Map == master.Map && master.InRange(m, 3) && m is BaseCreature
                             { Controlled: true, ControlOrder: OrderType.Guard or OrderType.Follow or OrderType.Come } pet &&
                         pet.ControlMaster == master && (!onlyBonded || pet.IsBonded))
                     {
@@ -4828,7 +4828,7 @@ namespace Server.Mobiles
         }
 
         // If this needs to be serialized, recommend creating a hash or registry id. Don't serialize strings.
-        public virtual string SpeedClass => null;
+        public virtual SpeedLevel SpeedClass => SpeedLevel.None;
 
         public virtual void GetSpeeds(out double activeSpeed, out double passiveSpeed)
         {
