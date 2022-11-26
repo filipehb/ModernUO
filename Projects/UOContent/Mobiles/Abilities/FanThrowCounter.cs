@@ -2,14 +2,12 @@
 
 public class FanThrowCounter : MonsterAbilitySingleTarget
 {
-    public override MonsterAbilityType AbilityType => MonsterAbilityType.EnergyBoltCounter;
+    public override MonsterAbilityType AbilityType => MonsterAbilityType.FanThrow;
     public override MonsterAbilityTrigger AbilityTrigger => MonsterAbilityTrigger.TakeDamage;
     public override double ChanceToTrigger => 0.2;
 
     protected override void OnTarget(MonsterAbilityTrigger trigger, BaseCreature source, Mobile defender)
     {
-        base.OnTarget(trigger, source, defender);
-
         /* Fan Throw
          * Effect:
          * - To: "0x57D4F5B"
@@ -35,6 +33,7 @@ public class FanThrowCounter : MonsterAbilitySingleTarget
             0
         );
 
+        source.DoHarmful(defender);
         AOS.Damage(defender, source, Utility.RandomMinMax(50, 65), 100, 0, 0, 0, 0);
     }
 
