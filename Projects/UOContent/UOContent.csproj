@@ -31,14 +31,14 @@
             <IncludeInPackage>false</IncludeInPackage>
         </ProjectReference>
         <PackageReference Include="MailKit" Version="3.4.2" />
-        <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0" />
+        <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
         <PackageReference Include="Microsoft.Toolkit.HighPerformance" Version="7.1.2" />
         <PackageReference Include="Zlib.Bindings" Version="1.10.1" />
         <PackageReference Include="Argon2.Bindings" Version="1.14.4" />
         <PackageReference Include="Zstd.Binaries" Version="1.5.1" />
 
-        <PackageReference Include="ModernUO.Serialization.Annotations" Version="2.5.3" />
-        <PackageReference Include="ModernUO.Serialization.Generator" Version="2.5.2" />
+        <PackageReference Include="ModernUO.Serialization.Annotations" Version="2.6.0" />
+        <PackageReference Include="ModernUO.Serialization.Generator" Version="2.6.1" />
     </ItemGroup>
     <ItemGroup>
         <AdditionalFiles Include="Migrations/*.v*.json" />

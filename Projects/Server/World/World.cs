@@ -63,6 +63,15 @@ public static class World
     {
         get
         {
+#if THREADGUARD
+            if (Thread.CurrentThread != Core.Thread)
+            {
+                logger.Error(
+                    "Attempted to get a new mobile serial from the wrong thread!\n{StackTrace}",
+                    new StackTrace()
+                );
+            }
+#endif
             var last = _lastMobile;
             var maxMobile = (Serial)MaxMobileSerial;
 
@@ -75,7 +84,7 @@ public static class World
                     last = (Serial)1;
                 }
 
-                if (FindMobile(last) == null)
+                if (FindMobile(last, true) == null)
                 {
                     return _lastMobile = last;
                 }
@@ -90,6 +99,15 @@ public static class World
     {
         get
         {
+#if THREADGUARD
+            if (Thread.CurrentThread != Core.Thread)
+            {
+                logger.Error(
+                    "Attempted to get a new item serial from the wrong thread!\n{StackTrace}",
+                    new StackTrace()
+                );
+            }
+#endif
             var last = _lastItem;
 
             for (int i = 0; i < _maxItems; i++)
@@ -101,7 +119,7 @@ public static class World
                     last = (Serial)ItemOffset;
                 }
 
-                if (FindItem(last) == null)
+                if (FindItem(last, true) == null)
                 {
                     return _lastItem = last;
                 }
@@ -228,10 +246,6 @@ public static class World
         NetState.FlushAll();
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Broadcast(int hue, bool ascii, string format, params object[] args) =>
-        Broadcast(hue, ascii, string.Format(format, args));
-
     internal static void LoadEntities(string basePath, Dictionary<ulong, string> typesDb)
     {
         IIndexInfo<Serial> itemIndexInfo = new EntityTypeIndex("Items");
@@ -302,7 +316,8 @@ public static class World
 
         watch.Stop();
 
-        logger.Information("World loaded ({ItemCount} items, {MobileCount} mobiles) ({Duration:F2} seconds)",
+        logger.Information("Loading world {Status} ({ItemCount} items, {MobileCount} mobiles) ({Duration:F2} seconds)",
+            "done",
             Items.Count,
             Mobiles.Count,
             watch.Elapsed.TotalSeconds
@@ -316,23 +331,27 @@ public static class World
             AddEntity(entity);
         }
 
+        _pendingAdd.Clear();
+
         foreach (var entity in _pendingDelete.Values)
         {
             if (_pendingAdd.ContainsKey(entity.Serial))
             {
-                logger.Warning("Entity {Entity} was both pending both deletion and addition after save", entity);
+                logger.Warning("Entity {Entity} was both pending deletion and addition after save", entity);
             }
 
             RemoveEntity(entity);
         }
+
+        _pendingDelete.Clear();
     }
 
     private static void AppendSafetyLog(string action, ISerializable entity)
     {
         var message =
-            $"Warning: Attempted to {action} {entity} during world save.{Environment.NewLine}This action could cause inconsistent state.{Environment.NewLine}It is strongly advised that the offending scripts be corrected.";
+            $"Warning: Attempted to {{Action}} {{Entity}} during world save.{Environment.NewLine}This action could cause inconsistent state.{Environment.NewLine}It is strongly advised that the offending scripts be corrected.";
 
-        logger.Information(message);
+        logger.Information(message, action, entity);
 
         try
         {
@@ -418,7 +437,7 @@ public static class World
 
             watch.Stop();
 
-            logger.Information("Writing world save snapshot done ({Duration:F2} seconds)", watch.Elapsed.TotalSeconds);
+            logger.Information("Writing world save snapshot {Status} ({Duration:F2} seconds)", "done", watch.Elapsed.TotalSeconds);
         }
         catch (Exception ex)
         {
@@ -427,7 +446,7 @@ public static class World
 
         if (exception != null)
         {
-            logger.Error(exception, "Writing world save snapshot failed.");
+            logger.Error(exception, "Writing world save snapshot {Status}.", "failed");
             Persistence.TraceException(exception);
 
             BroadcastStaff(0x35, true, "Writing world save snapshot failed.");
@@ -565,7 +584,7 @@ public static class World
         if (exception == null)
         {
             var duration = watch.Elapsed.TotalSeconds;
-            logger.Information("World save completed ({Duration:F2} seconds)", duration);
+            logger.Information("Saving world {Status} ({Duration:F2} seconds)", "done", duration);
 
             // Only broadcast if it took at least 150ms
             if (duration >= 0.15)
@@ -575,7 +594,7 @@ public static class World
         }
         else
         {
-            logger.Error(exception, "World save failed");
+            logger.Error(exception, "Saving world {Status}", "failed");
             Persistence.TraceException(exception);
 
             BroadcastStaff(0x35, true, "World save failed.");
@@ -596,17 +615,30 @@ public static class World
             case WorldState.Saving:
             case WorldState.WritingSave:
                 {
-                    if (_pendingDelete.TryGetValue(serial, out var entity))
-                    {
-                        return !returnDeleted ? null : entity as T;
-                    }
-
-                    if (_pendingAdd.TryGetValue(serial, out entity))
+                    if (returnDeleted && _pendingDelete.TryGetValue(serial, out var entity))
                     {
                         return entity as T;
                     }
 
-                    goto case WorldState.Running;
+                    if (!_pendingAdd.TryGetValue(serial, out entity))
+                    {
+                        if (serial.IsItem)
+                        {
+                            if (Items.TryGetValue(serial, out var item))
+                            {
+                                entity = item;
+                            }
+                        }
+                        else // if (serial.IsMobile)
+                        {
+                            if (Mobiles.TryGetValue(serial, out var mob))
+                            {
+                                entity = mob;
+                            }
+                        }
+                    }
+
+                    return entity?.Deleted == false || returnDeleted ? entity as T : null;
                 }
             case WorldState.Running:
                 {
@@ -643,7 +675,7 @@ public static class World
         {
             default: // Not Running
                 {
-                    throw new Exception($"Added {entity.GetType().Name} before world load.\n");
+                    throw new Exception($"Added {entity.GetType().Name} before world load.");
                 }
             case WorldState.Saving:
                 {
@@ -664,22 +696,93 @@ public static class World
                 {
                     if (entity.Serial.IsItem)
                     {
-                        Items[entity.Serial] = entity as Item;
+                        if (!Items.TryAdd(entity.Serial, entity as Item))
+                        {
+                            var existing = Items[entity.Serial];
+
+                            if (existing == entity)
+                            {
+                                logger.Error(
+                                    $"Attempted to add '{{Entity}}' ({{Serial}}) to World.Items but it already exists in the collection.{Environment.NewLine}{{StackTrace}}",
+                                    entity.GetType().FullName,
+                                    entity.Serial,
+                                    new StackTrace()
+                                );
+                            }
+                            else
+                            {
+                                logger.Error(
+                                    $"Attempted to add '{{Entity}}' ({{Serial}}) to World.Items but found '{{ExistingEntity}}' ({{ExistingSerial}}).{Environment.NewLine}{{StackTrace}}",
+                                    entity.GetType().FullName,
+                                    entity.Serial,
+                                    existing.GetType().FullName,
+                                    existing.Serial,
+                                    new StackTrace()
+                                );
+                            }
+                        }
                     }
 
                     if (entity.Serial.IsMobile)
                     {
-                        Mobiles[entity.Serial] = entity as Mobile;
+                        if (!Mobiles.TryAdd(entity.Serial, entity as Mobile))
+                        {
+                            var existing = Mobiles[entity.Serial];
+
+                            if (existing == entity)
+                            {
+                                logger.Error(
+                                    $"Attempted to add '{{Entity}}' ({{Serial}}) to World.Mobiles but it already exists in the collection.{Environment.NewLine}{{StackTrace}}",
+                                    entity.GetType().FullName,
+                                    entity.Serial,
+                                    new StackTrace()
+                                );
+                            }
+                            else
+                            {
+                                logger.Error(
+                                    $"Attempted to add '{{Entity}}' ({{Serial}}) to World.Mobiles but found '{{ExistingEntity}}' ({{ExistingSerial}}).{Environment.NewLine}{{StackTrace}}",
+                                    entity.GetType().FullName,
+                                    entity.Serial,
+                                    existing.GetType().FullName,
+                                    existing.Serial,
+                                    new StackTrace()
+                                );
+                            }
+                        }
                     }
                     break;
                 }
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void AddGuild(BaseGuild guild)
     {
-        Guilds[guild.Serial] = guild;
+        if (!Guilds.TryAdd(guild.Serial, guild))
+        {
+            var existing = Guilds[guild.Serial];
+
+            if (existing == guild)
+            {
+                logger.Error(
+                    $"Attempted to add '{{Entity}}' ({{Serial}}) to World.Guilds but it already exists in the collection.{Environment.NewLine}{{StackTrace}}",
+                    guild.GetType().FullName,
+                    guild.Serial,
+                    new StackTrace()
+                );
+            }
+            else
+            {
+                logger.Error(
+                    $"Attempted to add '{{Entity}}' ({{Serial}}) to World.Guilds but found '{{ExistingEntity}}' ({{ExistingSerial}}).{Environment.NewLine}{{StackTrace}}",
+                    guild.GetType().FullName,
+                    guild.Serial,
+                    existing.GetType().FullName,
+                    existing.Serial,
+                    new StackTrace()
+                );
+            }
+        }
     }
 
     public static void RemoveEntity<T>(T entity) where T : class, IEntity
@@ -688,7 +791,7 @@ public static class World
         {
             default: // Not Running
                 {
-                    throw new Exception($"Removed {entity.GetType().Name} before world load.\n");
+                    throw new Exception($"Removed {entity.GetType().Name} before world load.");
                 }
             case WorldState.Saving:
                 {

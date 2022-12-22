@@ -19,7 +19,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -350,7 +349,7 @@ public static class Core
             _                              => "CTRL+C"
         };
 
-        logger.Information($"Detected {keypress} pressed.");
+        logger.Information("Detected {Key} pressed.", keypress);
         e.Cancel = true;
         Kill();
     }
@@ -471,26 +470,19 @@ public static class Core
 
         ServerConfiguration.Load();
 
-        logger.Information($"Running on {RuntimeInformation.FrameworkDescription}");
+        logger.Information("Running on {Framework}", RuntimeInformation.FrameworkDescription);
 
         var s = Arguments;
 
         if (s.Length > 0)
         {
-            logger.Information($"Running with arguments: {s}");
+            logger.Information("Running with arguments: {Args}", s);
         }
 
         if (MultiProcessor)
         {
-            logger.Information($"Optimizing for {ProcessorCount} processor{(ProcessorCount == 1 ? "" : "s")}");
+            logger.Information($"Optimizing for {{ProcessorCount}} processor{(ProcessorCount == 1 ? "" : "s")}", ProcessorCount);
         }
-
-        if (GCSettings.IsServerGC)
-        {
-            logger.Information("Server garbage collection mode enabled");
-        }
-
-        logger.Information($"High resolution timing ({(Stopwatch.IsHighResolution ? "Supported" : "Unsupported")})");
 
         var assemblyPath = Path.Join(BaseDirectory, AssembliesConfiguration);
 
@@ -516,7 +508,7 @@ public static class Core
 
         TileMatrixLoader.LoadTileMatrix();
 
-        RegionLoader.LoadRegions();
+        RegionJsonSerializer.LoadRegions();
         World.Load();
 
         AssemblyHandler.Invoke("Initialize");
@@ -674,7 +666,7 @@ public static class Core
             if (errors.Length > 0)
             {
                 Utility.PushColor(ConsoleColor.Red);
-                Console.WriteLine($"{type}\n{errors.ToString()}");
+                Console.WriteLine($"{type}{Environment.NewLine}{errors.ToString()}");
                 Utility.PopColor();
             }
         }

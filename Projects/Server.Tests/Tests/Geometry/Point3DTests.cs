@@ -5,6 +5,15 @@ namespace Server.Tests;
 
 public class Point3DTests
 {
+    [Theory]
+    [InlineData("(709, 2236, -2)", 709, 2236, -2)]
+    public void TestPoint3DRegressions(string text, int x, int y, int z)
+    {
+        var successful = Point3D.TryParse(text, null, out var p);
+        Assert.True(successful);
+        Assert.Equal(new Point3D(x, y, z), p);
+    }
+
     [Fact]
     public void TestPoint3DToString()
     {
@@ -68,5 +77,65 @@ public class Point3DTests
         var p4 = new Point3D(min, min, min);
         Assert.False(p4.TryFormat(array, out var cp4, null, null));
         Assert.Equal(0, cp4);
+    }
+
+    [Fact]
+    public void TestPoint3DTryParse()
+    {
+        // Happy Path
+        Assert.True(Point3D.TryParse("(101, 23, 55)", null, out var p));
+        Assert.Equal(new Point3D(101, 23, 55), p);
+        Assert.Equal(new Point3D(101, 23, 55), Point3D.Parse("(101, 23, 55)", null));
+
+        // Trimming
+        Assert.True(Point3D.TryParse(" (101,23 ,55)  ", null, out p));
+        Assert.Equal(new Point3D(101, 23, 55), p);
+        Assert.Equal(new Point3D(101, 23, 55), Point3D.Parse(" (101,23 ,55)  ", null));
+
+        // No parenthesis
+        Assert.False(Point3D.TryParse("101, 23 55)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("101, 23, 55)", null));
+
+        Assert.False(Point3D.TryParse("(101, 23, 55", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(101, 23, 55", null));
+
+        // No numbers
+        Assert.False(Point3D.TryParse("()", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("()", null));
+
+        Assert.False(Point3D.TryParse("(,)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(,)", null));
+
+        Assert.False(Point3D.TryParse("(|)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(|)", null));
+
+        Assert.False(Point3D.TryParse("(101)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(101)", null));
+
+        Assert.False(Point3D.TryParse("(101,)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(101,)", null));
+
+        Assert.False(Point3D.TryParse("(,23)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(,23)", null));
+
+        Assert.False(Point3D.TryParse("(,23,55)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(,23,55)", null));
+
+        Assert.False(Point3D.TryParse("(,23,)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(,23,)", null));
+
+        Assert.False(Point3D.TryParse("(23,,-1)", null, out p));
+        Assert.Equal(default, p);
+        Assert.Throws<FormatException>(() => Point3D.Parse("(23,,-1)", null));
     }
 }
