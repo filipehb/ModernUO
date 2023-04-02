@@ -6,7 +6,6 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml;
 using Microsoft.Toolkit.HighPerformance;
@@ -950,14 +949,18 @@ public static class Utility
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool InUpdateRange(Point3D p1, Point3D p2) => InRange(p1, p2, 18);
 
-    // 4d6+8 would be: Utility.Dice( 4, 6, 8 )
-    public static int Dice(uint amount, uint sides, int bonus)
+    public static int Dice(int amount, int sides, int bonus)
     {
+        if (amount <= 0 || sides <= 0)
+        {
+            return 0;
+        }
+
         var total = 0;
 
         for (var i = 0; i < amount; ++i)
         {
-            total += (int)RandomSources.Source.Next(1, sides);
+            total += RandomSources.Source.Next(1, sides);
         }
 
         return total + bonus;
@@ -1035,6 +1038,27 @@ public static class Utility
         } while (i < count);
 
         return sampleList;
+    }
+
+    public static void RandomSample<T>(this T[] source, int count, List<T> dest)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        var length = source.Length;
+        Span<bool> list = stackalloc bool[length];
+
+        var i = 0;
+        do
+        {
+            var rand = Random(length);
+            if (!(list[rand] && (list[rand] = true)))
+            {
+                dest.Add(source[rand]);
+            }
+        } while (++i < count);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
