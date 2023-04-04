@@ -231,7 +231,7 @@ namespace Server.Mobiles
         public DateTime AnkhNextUse { get; set; }
 
         [CommandProperty(AccessLevel.GameMaster)]
-        public TimeSpan DisguiseTimeLeft => DisguiseTimers.TimeRemaining(this);
+        public TimeSpan DisguiseTimeLeft => DisguisePersistence.TimeRemaining(this);
 
         [CommandProperty(AccessLevel.GameMaster)]
         public DateTime PeacedUntil { get; set; }
@@ -1527,7 +1527,7 @@ namespace Server.Mobiles
                 pm.LastOnline = Core.Now;
             }
 
-            DisguiseTimers.StartTimer(m);
+            DisguisePersistence.StartTimer(m);
 
             Timer.StartTimer(() => SpecialMove.ClearAllMoves(m));
         }
@@ -1575,7 +1575,7 @@ namespace Server.Mobiles
                 pm.LastOnline = Core.Now;
             }
 
-            DisguiseTimers.StopTimer(from);
+            DisguisePersistence.StopTimer(from);
         }
 
         public override void RevealingAction()
@@ -2577,7 +2577,7 @@ namespace Server.Mobiles
 
             PolymorphSpell.StopTimer(this);
             IncognitoSpell.StopTimer(this);
-            DisguiseTimers.RemoveTimer(this);
+            DisguisePersistence.RemoveTimer(this);
 
             EndAction<PolymorphSpell>();
             EndAction<IncognitoSpell>();
@@ -2886,14 +2886,14 @@ namespace Server.Mobiles
 
             if (tbl.TryGetValue(obj, out var count))
             {
-                if (count.TimeStamp + SkillCheck.AntiMacroExpire <= Core.Now)
+                if (count.TimeStamp + SkillCheck.AntiMacro.Expire <= Core.Now)
                 {
                     count.Count = 1;
                     return true;
                 }
 
                 ++count.Count;
-                return count.Count <= SkillCheck.Allowance;
+                return count.Count <= SkillCheck.AntiMacro.Allowance;
             }
 
             tbl[obj] = count = new CountAndTimeStamp();
@@ -3229,7 +3229,7 @@ namespace Server.Mobiles
 
                 foreach (var (k, v) in t)
                 {
-                    if (v.TimeStamp + SkillCheck.AntiMacroExpire <= Core.Now)
+                    if (v.TimeStamp + SkillCheck.AntiMacro.Expire <= Core.Now)
                     {
                         toRemove.Add(k);
                     }
@@ -3487,7 +3487,7 @@ namespace Server.Mobiles
 
             BaseHouse.HandleDeletion(this);
 
-            DisguiseTimers.RemoveTimer(this);
+            DisguisePersistence.RemoveTimer(this);
         }
 
         public override void GetProperties(IPropertyList list)

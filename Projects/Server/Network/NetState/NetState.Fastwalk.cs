@@ -47,7 +47,7 @@ public partial class NetState
             var step = _steps[_expiredIndex];
 
             // Is the step ahead of us, or the next step rolled over and we didn't yet
-            if (step > now || lastIndex > -1 && _steps[lastIndex] > step)
+            if (step - now > 0 || lastIndex > -1 && _steps[lastIndex] > step)
             {
                 break;
             }

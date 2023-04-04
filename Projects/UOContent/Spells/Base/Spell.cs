@@ -4,7 +4,6 @@ using Server.Engines.ConPVP;
 using Server.Items;
 using Server.Misc;
 using Server.Mobiles;
-using Server.Network;
 using Server.Spells.Bushido;
 using Server.Spells.Necromancy;
 using Server.Spells.Ninjitsu;
@@ -193,7 +192,7 @@ namespace Server.Spells
             (m as BaseCreature)?.OnHarmfulSpell(Caster);
         }
 
-        public virtual int GetNewAosDamage(int bonus, uint dice, uint sides, Mobile singleTarget)
+        public virtual int GetNewAosDamage(int bonus, int dice, int sides, Mobile singleTarget)
         {
             if (singleTarget != null)
             {
@@ -209,10 +208,10 @@ namespace Server.Spells
             return GetNewAosDamage(bonus, dice, sides, false);
         }
 
-        public virtual int GetNewAosDamage(int bonus, uint dice, uint sides, bool playerVsPlayer) =>
+        public virtual int GetNewAosDamage(int bonus, int dice, int sides, bool playerVsPlayer) =>
             GetNewAosDamage(bonus, dice, sides, playerVsPlayer, 1.0);
 
-        public virtual int GetNewAosDamage(int bonus, uint dice, uint sides, bool playerVsPlayer, double scalar)
+        public virtual int GetNewAosDamage(int bonus, int dice, int sides, bool playerVsPlayer, double scalar)
         {
             var damage = Utility.Dice(dice, sides, bonus) * 100;
 

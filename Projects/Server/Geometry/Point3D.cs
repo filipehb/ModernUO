@@ -54,10 +54,12 @@ public struct Point3D
     {
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Point3D(Point3D p) : this(p.X, p.Y, p.Z)
     {
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Point3D(Point2D p, int z) : this(p.X, p.Y, z)
     {
     }
@@ -198,7 +200,7 @@ public struct Point3D
         var offset = firstComma + 1;
 
         var secondComma = s[offset..].IndexOfOrdinal(',');
-        if (secondComma == -1 || offset == secondComma)
+        if (secondComma == -1)
         {
             throw new FormatException($"The input string '{s}' was not in a correct format.");
         }
