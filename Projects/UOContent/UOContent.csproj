@@ -44,6 +44,7 @@
         <AdditionalFiles Include="Migrations/*.v*.json" />
     </ItemGroup>
     <ItemGroup>
+      <Folder Include="Custom\DiscordBot\" />
       <Folder Include="Custom\Mobiles" />
     </ItemGroup>
 </Project>

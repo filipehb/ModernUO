@@ -18,7 +18,12 @@ public class RolePlayConfiguration
 
         DynamicEconomySystemOn = ServerConfiguration.GetOrUpdateSetting("roleplay.dynamicEconomySystemOn", true);
         logger.Information($"dynamicEconomySystemOn: {DynamicEconomySystemOn}");
+
+        DiscordBotSystemOn = ServerConfiguration.GetOrUpdateSetting("roleplay.discordBotSystemOn", true);
+        logger.Information($"discordBotSystemOn: {DiscordBotSystemOn}");
     }
+
+    public static bool DiscordBotSystemOn { get; set; }
 
     public static bool DynamicEconomySystemOn { get; private set; }
 
