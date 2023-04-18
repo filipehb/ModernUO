@@ -79,6 +79,35 @@ namespace Server.Commands
             }
         }
 
+        public static void WriteLine(string username, string text)
+        {
+            if (!Enabled)
+            {
+                return;
+            }
+
+            try
+            {
+                Output.WriteLine("{0}: {1}: {2}", Core.Now, username, text);
+
+                var path = Core.BaseDirectory;
+
+                var name = username;
+
+                AppendPath(ref path, "Logs");
+                AppendPath(ref path, "Commands");
+                AppendPath(ref path, "discord.command");
+                path = Path.Combine(path, $"{name}.log");
+
+                using var sw = new StreamWriter(path, true);
+                sw.WriteLine("{0}: {1}: {2}", Core.Now, username, text);
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
         public static void AppendPath(ref string path, string toAppend)
         {
             path = Path.Combine(path, toAppend);

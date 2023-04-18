@@ -6,6 +6,8 @@ using System.Threading;
 using Server.Accounting;
 using Server.Buffers;
 using Server.Commands;
+using Server.Custom;
+using Server.Custom.DiscordBot;
 using Server.Misc;
 using Server.Multis;
 using Server.Network;
@@ -640,8 +642,8 @@ namespace Server.Gumps
                         using var sb = ValueStringBuilder.Create();
 
                         for (int i = 0, index = listPage * 12;
-                            i < 12 && index >= 0 && index < sharedAccounts.Count;
-                            ++i, ++index)
+                             i < 12 && index >= 0 && index < sharedAccounts.Count;
+                             ++i, ++index)
                         {
                             var kvp = sharedAccounts[index];
 
@@ -4131,6 +4133,9 @@ namespace Server.Gumps
             {
                 InvokeCommand("Save");
             }
+
+            ulong _shard_status_channel = Convert.ToUInt64(RolePlayConfiguration.DiscordBotTokenStatusChanelID);
+            UODiscordBotUtils.SendMessageAsync(_shard_status_channel, ":turtle: Servidor OFF :turtle:", true).Wait();
 
             Core.Kill(restart);
         }

@@ -21,9 +21,21 @@ public class RolePlayConfiguration
 
         DiscordBotSystemOn = ServerConfiguration.GetOrUpdateSetting("roleplay.discordBotSystemOn", true);
         logger.Information($"discordBotSystemOn: {DiscordBotSystemOn}");
+        DiscordBotToken = ServerConfiguration.GetOrUpdateSetting("roleplay.discordBot.token", "");
+        logger.Information($"discordBot.token Setado");
+        DiscordBotTokenStatusChanelID = ServerConfiguration.GetOrUpdateSetting("roleplay.discordBot.channel.status.id", "");
+        logger.Information($"discordBot.channel.status.id Setado");
+        DiscordBotChannelControlID = ServerConfiguration.GetOrUpdateSetting("roleplay.discordBot.channel.control.id", "");
+        logger.Information($"discordBot.channel.control.id Setado");
     }
 
-    public static bool DiscordBotSystemOn { get; set; }
+    public static string DiscordBotChannelControlID { get; set; }
+
+    public static string DiscordBotTokenStatusChanelID { get; set; }
+
+    public static string DiscordBotToken { get; private set; }
+
+    public static bool DiscordBotSystemOn { get; private set; }
 
     public static bool DynamicEconomySystemOn { get; private set; }
 

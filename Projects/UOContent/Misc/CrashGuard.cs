@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using Server.Accounting;
+using Server.Custom;
+using Server.Custom.DiscordBot;
 using Server.Logging;
 using Server.Network;
 using Server.Saves;
@@ -64,10 +66,15 @@ namespace Server.Misc
         {
             logger.Information("Restarting");
 
+            ulong _shard_status_channel = Convert.ToUInt64(RolePlayConfiguration.DiscordBotTokenStatusChanelID);
+            UODiscordBotUtils.SendMessageAsync(_shard_status_channel, ":skull: Servidor Crashou :skull:", true).Wait();
+
             try
             {
                 Process.Start(Core.Assembly.Location, Core.Arguments);
                 logger.Information("Restart done");
+
+                UODiscordBotUtils.SendMessageAsync(_shard_status_channel, ":turtle: Servidor sendo restartado :turtle:", true).Wait();
 
                 e.Close = true;
             }
