@@ -1,6 +1,6 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2022 - ModernUO Development Team                       *
+ * Copyright 2019-2023 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
  * File: ISerializable.cs                                                *
  *                                                                       *
@@ -19,13 +19,11 @@ using System.IO;
 
 namespace Server;
 
-public interface ISerializable
+public interface ISerializable : IGenericSerializable
 {
     // Should be serialized/deserialized with the index so it can be referenced by IGenericReader
     DateTime Created { get; set; }
 
-    // Should be serialized/deserialized with the index so it can be referenced by IGenericReader
-    DateTime LastSerialized { get; protected internal set; }
     long SavePosition { get; protected internal set; }
     BufferWriter SaveBuffer { get; protected internal set; }
 
@@ -50,7 +48,7 @@ public interface ISerializable
         }
     }
 
-    public void Serialize(ConcurrentQueue<Type> types)
+    void IGenericSerializable.Serialize(ConcurrentQueue<Type> types)
     {
         SaveBuffer ??= new BufferWriter(true, types);
 
@@ -61,7 +59,6 @@ public interface ISerializable
             return;
         }
 
-        LastSerialized = Core.Now;
         SaveBuffer.Seek(0, SeekOrigin.Begin);
         Serialize(SaveBuffer);
 

@@ -556,6 +556,15 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
                 SendLocalizedMessage(m_Paralyzed ? 502381 : 502382);
                 _paraTimerToken.Cancel();
             }
+
+            if (!value && m_NetState != null)
+            {
+                var now = Core.TickCount;
+                if (now - m_NetState._nextMovementTime > 0)
+                {
+                    m_NetState._nextMovementTime = now;
+                }
+            }
         }
     }
 
@@ -2249,12 +2258,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
     [CommandProperty(AccessLevel.GameMaster, readOnly: true)]
     public DateTime Created { get; set; } = Core.Now;
 
-    [CommandProperty(AccessLevel.GameMaster)]
-    DateTime ISerializable.LastSerialized { get; set; } = Core.Now;
+    public long SavePosition { get; set; } = -1;
 
-    long ISerializable.SavePosition { get; set; } = -1;
-
-    BufferWriter ISerializable.SaveBuffer { get; set; }
+    public BufferWriter SaveBuffer { get; set; }
 
     [CommandProperty(AccessLevel.Counselor)]
     public Serial Serial { get; }
@@ -4081,33 +4087,49 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         switch (d & Direction.Mask)
         {
             case Direction.North:
-                --y;
-                break;
+                {
+                    --y;
+                    break;
+                }
             case Direction.Right:
-                ++x;
-                --y;
-                break;
+                {
+                    ++x;
+                    --y;
+                    break;
+                }
             case Direction.East:
-                ++x;
-                break;
+                {
+                    ++x;
+                    break;
+                }
             case Direction.Down:
-                ++x;
-                ++y;
-                break;
+                {
+                    ++x;
+                    ++y;
+                    break;
+                }
             case Direction.South:
-                ++y;
-                break;
+                {
+                    ++y;
+                    break;
+                }
             case Direction.Left:
-                --x;
-                ++y;
-                break;
+                {
+                    --x;
+                    ++y;
+                    break;
+                }
             case Direction.West:
-                --x;
-                break;
+                {
+                    --x;
+                    break;
+                }
             case Direction.Up:
-                --x;
-                --y;
-                break;
+                {
+                    --x;
+                    --y;
+                    break;
+                }
         }
 
         newLocation.m_X = x;
@@ -4216,21 +4238,6 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             return false;
         }
 
-        if (
-            CalcMoves.EnableFastwalkPrevention &&
-            AccessLevel < CalcMoves.FastwalkExemptionLevel &&
-            m_NetState?.AddStep(d) == false
-        )
-        {
-            var fw = new FastWalkEventArgs(m_NetState);
-            EventSink.InvokeFastWalk(fw);
-
-            if (fw.Blocked)
-            {
-                return false;
-            }
-        }
-
         LastMoveTime = Core.TickCount;
 
         return true;
@@ -4262,6 +4269,11 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             }
 
             DisruptiveAction();
+        }
+
+        if (m_NetState != null)
+        {
+            m_NetState._nextMovementTime += ComputeMovementSpeed(d);
         }
 
         m_NetState?.SendMovementAck(m_NetState.Sequence, this);
@@ -4338,6 +4350,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         }
 
         OnAfterMove(oldLocation);
+
         return true;
     }
 
@@ -4549,6 +4562,11 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
     /// <param name="spell"></param>
     public virtual void OnSpellCast(ISpell spell)
     {
+        var now = Core.TickCount;
+        if (m_NetState != null && now - m_NetState._nextMovementTime > 0)
+        {
+            m_NetState._nextMovementTime = now;
+        }
     }
 
     /// <summary>
@@ -5428,38 +5446,64 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         switch (type)
         {
             case MessageType.Regular:
-                SpeechHue = hue;
-                break;
+                {
+                    SpeechHue = hue;
+                    break;
+                }
             case MessageType.Emote:
-                EmoteHue = hue;
-                break;
+                {
+                    EmoteHue = hue;
+                    break;
+                }
             case MessageType.Whisper:
-                WhisperHue = hue;
-                range = 1;
-                break;
+                {
+                    WhisperHue = hue;
+                    range = 1;
+                    break;
+                }
             case MessageType.Yell:
-                YellHue = hue;
-                range = 18;
-                break;
+                {
+                    YellHue = hue;
+                    range = 18;
+                    break;
+                }
             case MessageType.System:
-                break;
+                {
+                    break;
+                }
             case MessageType.Label:
-                break;
+                {
+                    break;
+                }
             case MessageType.Focus:
-                break;
+                {
+                    break;
+                }
             case MessageType.Spell:
-                break;
+                {
+                    break;
+                }
             case MessageType.Guild:
-                break;
+                {
+                    break;
+                }
             case MessageType.Alliance:
-                break;
+                {
+                    break;
+                }
             case MessageType.Command:
-                break;
+                {
+                    break;
+                }
             case MessageType.Encoded:
-                break;
+                {
+                    break;
+                }
             default:
-                type = MessageType.Regular;
-                break;
+                {
+                    type = MessageType.Regular;
+                    break;
+                }
         }
 
         var regArgs = new SpeechEventArgs(this, text, type, hue, keywords);
@@ -8436,6 +8480,8 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             return;
         }
 
+        mod.Owner = this;
+
         _statMods ??= new List<StatMod>();
         _statMods.Add(mod);
         Delta(MobileDelta.Stat | GetStatDelta(mod.Type));
@@ -8950,7 +8996,8 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             return;
         }
 
-        Span<byte> buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(affix, args)].InitializePacket();
+        Span<byte> buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(affix, args)]
+            .InitializePacket();
 
         var eable = m_Map.GetClientsInRange(m_Location);
 

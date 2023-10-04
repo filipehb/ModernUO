@@ -22,7 +22,7 @@ else
   config="-c Release"
 fi
 
-if [[ $arch =~ ^[aarch|arm]* ]]; then
+if [[ $arch == *'aarch'* || $arch == *'arm'* ]]; then
   arch="arm64"
 else
   arch="x64"
