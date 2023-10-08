@@ -1,6 +1,6 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2022 - ModernUO Development Team                       *
+ * Copyright 2019-2023 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
  * File: LocalizationEntry.cs                                            *
  *                                                                       *
@@ -17,6 +17,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Server.Buffers;
+using Server.Text;
 using Server.Collections;
 
 namespace Server;

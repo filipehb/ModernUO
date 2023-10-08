@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Net;
 using ModernUO.Serialization;
 using Server.Accounting;
-using Server.Buffers;
 using Server.ContextMenus;
 using Server.Gumps;
 using Server.Mobiles;
 using Server.Network;
 using Server.Regions;
+using Server.Text;
 
 namespace Server.Items;
 
@@ -65,7 +65,7 @@ public partial class HouseRaffleStone : Item
     public static readonly TimeSpan ExpirationTime = TimeSpan.FromDays(30.0); // Time a person has to use the stone to place the house
 
     private static Timer _allStonesTimer;
-    private static HashSet<HouseRaffleStone> _allStones = null;
+    private static HashSet<HouseRaffleStone> _allStones;
 
     private HouseRaffleRegion _region;
 
@@ -227,9 +227,7 @@ public partial class HouseRaffleStone : Item
 
     private static void RemoveRaffleStone(HouseRaffleStone stone)
     {
-        _allStones.Remove(stone);
-
-        if (_allStones.Count == 0)
+        if (_allStones?.Remove(stone) == true && _allStones.Count == 0)
         {
             _allStonesTimer.Stop();
             _allStonesTimer = null;

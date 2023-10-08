@@ -16,6 +16,14 @@ namespace Server.Tests
             // Load Configurations
             ServerConfiguration.Load(true);
 
+            // Load UOContent.dll into the type resolver
+            ServerConfiguration.AssemblyDirectories.Add(Core.BaseDirectory);
+            var assembles = new [] { "ModernUO.dll", "UOContent.dll" };
+            AssemblyHandler.LoadAssemblies(assembles);
+
+            // Load Skills
+            SkillsInfo.Configure();
+
             // Configure / Initialize
             TestMapDefinitions.ConfigureTestMapDefinitions();
 

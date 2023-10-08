@@ -1,6 +1,6 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2022 - ModernUO Development Team                       *
+ * Copyright 2019-2023 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
  * File: MahjongPackets.cs                                               *
  *                                                                       *
@@ -242,7 +242,7 @@ namespace Server.Engines.Mahjong
 
             int number = reader.ReadByte();
 
-            if (number < 0 || number >= game.Tiles.Length)
+            if (number >= game.Tiles.Length)
             {
                 return;
             }

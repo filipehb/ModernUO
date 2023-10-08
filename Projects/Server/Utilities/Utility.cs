@@ -806,6 +806,27 @@ public static class Utility
         return outputList;
     }
 
+    // ToArray returns an array containing the contents of the List.
+    // This requires copying the List, which is an O(n) operation.
+    public static List<R> ToList<T, R>(this PooledRefList<T> poolList) where T : R
+    {
+        var size = poolList._size;
+        var items = poolList._items;
+
+        var list = new List<R>(size);
+        if (size == 0)
+        {
+            return list;
+        }
+
+        for (var i = 0; i < items.Length; i++)
+        {
+            list.Add(items[i]);
+        }
+
+        return list;
+    }
+
     public static bool ToBoolean(string value) =>
         bool.TryParse(value, out var b)
             ? b
@@ -1736,4 +1757,24 @@ public static class Utility
             TypeCode.UInt64 => 64,
             _               => 64
         };
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsNullOrWhiteSpace(this ReadOnlySpan<char> span) =>
+        span == default || span.IsEmpty || span.IsWhiteSpace();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool InTypeList(this Item item, Type[] types) => item.GetType().InTypeList(types);
+
+    public static bool InTypeList(this Type t, Type[] types)
+    {
+        for (var i = 0; i < types.Length; ++i)
+        {
+            if (types[i].IsAssignableFrom(t))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

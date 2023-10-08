@@ -4,6 +4,7 @@ using Server.ContextMenus;
 using Server.Engines.Quests;
 using Server.Engines.Quests.Necro;
 using Server.Engines.Spawners;
+using Server.Engines.Virtues;
 using Server.Factions;
 using Server.Gumps;
 using Server.Items;
@@ -1761,7 +1762,11 @@ public abstract class BaseAI
         }
 
         m_Mobile.BeginDeleteTimer();
-        m_Mobile.DropBackpack();
+
+        if (m_Mobile.CanDrop)
+        {
+            m_Mobile.DropBackpack();
+        }
 
         return true;
     }
@@ -2697,7 +2702,7 @@ public abstract class BaseAI
             }
 
             // Ignore players with activated honor
-            if (pm?.HonorActive == true && m_Mobile.Combatant != m)
+            if (m_Mobile.Combatant != m && VirtueSystem.GetVirtues(pm)?.HonorActive == true)
             {
                 continue;
             }
