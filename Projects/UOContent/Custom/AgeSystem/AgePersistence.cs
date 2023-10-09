@@ -5,17 +5,22 @@ using Server.Mobiles;
 
 namespace Server.Custom.AgeSystem;
 
-public class AgePersistence
+public class AgePersistence : GenericPersistence
 {
+    private static AgePersistence _agePersistence;
     private static Dictionary<PlayerMobile, int> AgeTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(AgePersistence));
 
     public static void Configure()
     {
-        GenericPersistence.Register("Age", Serialize, Deserialize);
+        _agePersistence = new AgePersistence();
     }
 
-    public static void Serialize(IGenericWriter writer)
+    public AgePersistence() : base("Age", 10)
+    {
+    }
+
+    public override void Serialize(IGenericWriter writer)
     {
         // Do serialization here
         writer.WriteEncodedInt(0); // version
@@ -31,7 +36,7 @@ public class AgePersistence
         logger.Information("Salvo informações de idades");
     }
 
-    public static void Deserialize(IGenericReader reader)
+    public override void Deserialize(IGenericReader reader)
     {
         // Do deserialization here
         var version = reader.ReadEncodedInt();

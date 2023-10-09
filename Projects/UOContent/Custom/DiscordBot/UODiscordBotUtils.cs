@@ -12,7 +12,10 @@ public class UODiscordBotUtils
 
     public static async Task SendMessageAsync(ulong _channelId, string message, bool auto_stop=false)
     {
-        Client = new DiscordSocketClient();
+        Client = new DiscordSocketClient(new DiscordSocketConfig
+        {
+            LogLevel = LogSeverity.Error
+        });
 
         Client.Log += Log;
 

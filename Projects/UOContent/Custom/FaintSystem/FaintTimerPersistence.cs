@@ -5,17 +5,18 @@ using Server.Mobiles;
 
 namespace Server.Custom.FaintSystem;
 
-public class FaintTimerPersistence
+public class FaintTimerPersistence : GenericPersistence
 {
+    private static FaintTimerPersistence _faintTimerPersistence;
     private static Dictionary<PlayerMobile, bool> FaintRunningTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(FaintTimerPersistence));
 
     public static void Configure()
     {
-        GenericPersistence.Register("FaintRunning", Serialize, Deserialize);
+        _faintTimerPersistence = new FaintTimerPersistence();
     }
 
-    public static void Serialize(IGenericWriter writer)
+    public override void Serialize(IGenericWriter writer)
     {
         // Do serialization here
         writer.WriteEncodedInt(0); // version
@@ -31,7 +32,7 @@ public class FaintTimerPersistence
         logger.Information("Salvo informações de FaintRunning");
     }
 
-    public static void Deserialize(IGenericReader reader)
+    public override void Deserialize(IGenericReader reader)
     {
         // Do deserialization here
         var version = reader.ReadEncodedInt();
@@ -120,4 +121,8 @@ public class FaintTimerPersistence
     }
 
     public static bool HasFaintRunning(PlayerMobile playerMobile) => FaintRunningTable.ContainsKey(playerMobile);
+
+    public FaintTimerPersistence() : base("FaintRunning", 10)
+    {
+    }
 }

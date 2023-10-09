@@ -5,17 +5,22 @@ using Server.Mobiles;
 
 namespace Server.Custom.Classes;
 
-public class ClassPersistence
+public class ClassPersistence : GenericPersistence
 {
+    private static ClassPersistence _classPersistence;
     private static Dictionary<PlayerMobile, Classes> ClassTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(ClassPersistence));
 
     public static void Configure()
     {
-        GenericPersistence.Register("Class", Serialize, Deserialize);
+        _classPersistence = new ClassPersistence();
     }
 
-    public static void Serialize(IGenericWriter writer)
+    public ClassPersistence() : base("Class", 10)
+    {
+    }
+
+    public override void Serialize(IGenericWriter writer)
     {
         // Do serialization here
         writer.WriteEncodedInt(0); // version
@@ -31,7 +36,7 @@ public class ClassPersistence
         logger.Information("Salvo informações de classes");
     }
 
-    public static void Deserialize(IGenericReader reader)
+    public override void Deserialize(IGenericReader reader)
     {
         // Do deserialization here
         var version = reader.ReadEncodedInt();

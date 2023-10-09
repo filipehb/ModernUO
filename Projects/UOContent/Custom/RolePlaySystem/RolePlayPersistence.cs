@@ -6,17 +6,18 @@ using Server.Mobiles;
 
 namespace Server.Custom.RolePlaySystem;
 
-public class RolePlayPersistence
+public class RolePlayPersistence : GenericPersistence
 {
+    private static RolePlayPersistence _rolePlayPersistence;
     private static Dictionary<PlayerMobile, List<Dictionary<PlayerMobile, int>>> RolePlayTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(RolePlayPersistence));
 
     public static void Configure()
     {
-        GenericPersistence.Register("RolePlayRate", Serialize, Deserialize);
+        _rolePlayPersistence = new RolePlayPersistence();
     }
 
-    public static void Serialize(IGenericWriter writer)
+    public override void Serialize(IGenericWriter writer)
     {
         // Do serialization here
         writer.WriteEncodedInt(0); // version
@@ -40,7 +41,7 @@ public class RolePlayPersistence
         logger.Information("Salvo informações de RolePlayRate");
     }
 
-    public static void Deserialize(IGenericReader reader)
+    public override void Deserialize(IGenericReader reader)
     {
         // Do deserialization here
         var version = reader.ReadEncodedInt();
@@ -177,4 +178,8 @@ public class RolePlayPersistence
     }
 
     public static bool HasRolePlayRate(PlayerMobile playerMobile) => RolePlayTable.ContainsKey(playerMobile);
+
+    public RolePlayPersistence() : base("RolePlayRate", 10)
+    {
+    }
 }

@@ -5,18 +5,19 @@ using Server.Mobiles;
 
 namespace Server.Custom.Race;
 
-public class RacePersistence
+public class RacePersistence : GenericPersistence
 {
+    private static RacePersistence _racePersistence;
     private static Dictionary<PlayerMobile, Races> RaceTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(RacePersistence));
 
 
     public static void Configure()
     {
-        GenericPersistence.Register("Race", Serialize, Deserialize);
+        _racePersistence = new RacePersistence();
     }
 
-    public static void Serialize(IGenericWriter writer)
+    public override void Serialize(IGenericWriter writer)
     {
         // Do serialization here
         writer.WriteEncodedInt(0); // version
@@ -32,7 +33,7 @@ public class RacePersistence
         logger.Information("Salvo informações de raças");
     }
 
-    public static void Deserialize(IGenericReader reader)
+    public override void Deserialize(IGenericReader reader)
     {
         // Do deserialization here
         var version = reader.ReadEncodedInt();
@@ -118,5 +119,9 @@ public class RacePersistence
         }
 
         return RaceTable[(PlayerMobile)mobile];
+    }
+
+    public RacePersistence() : base("Race", 10)
+    {
     }
 }

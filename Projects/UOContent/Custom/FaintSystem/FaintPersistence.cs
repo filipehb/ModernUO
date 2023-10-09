@@ -6,17 +6,18 @@ using Server.Mobiles;
 
 namespace Server.Custom.FaintSystem;
 
-public class FaintPersistence
+public class FaintPersistence : GenericPersistence
 {
+    private static FaintPersistence _faintPersistence;
     private static Dictionary<PlayerMobile, int> FaintTable = new();
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(FaintPersistence));
 
     public static void Configure()
     {
-        GenericPersistence.Register("Faint", Serialize, Deserialize);
+        _faintPersistence = new FaintPersistence();
     }
 
-    public static void Serialize(IGenericWriter writer)
+    public override void Serialize(IGenericWriter writer)
     {
         // Do serialization here
         writer.WriteEncodedInt(0); // version
@@ -32,7 +33,7 @@ public class FaintPersistence
         logger.Information("Salvo informações de desmaios");
     }
 
-    public static void Deserialize(IGenericReader reader)
+    public override void Deserialize(IGenericReader reader)
     {
         // Do deserialization here
         var version = reader.ReadEncodedInt();
@@ -161,4 +162,8 @@ public class FaintPersistence
     }
 
     public static bool HasFaint(PlayerMobile playerMobile) => FaintTable.ContainsKey(playerMobile);
+
+    public FaintPersistence() : base("Faint", 10)
+    {
+    }
 }
