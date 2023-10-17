@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Server;
@@ -118,7 +117,7 @@ public class BoatPacketTests : IClassFixture<ServerFixture>
         public override bool Contains(int x, int y) => !_notContainedList.Any(e => e.X == x && e.Y == y);
 
         public override MovingEntitiesEnumerable GetMovingEntities(bool includeBoat = false) =>
-            new(this, true, new Map.PooledEnumerable<IEntity>(_list));
+            new(this, true, new PooledEnumeration.PooledEnumerable<IEntity>(_list));
     }
 
     private class MockedMobile : Mobile

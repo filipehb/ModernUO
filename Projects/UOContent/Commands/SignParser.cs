@@ -91,17 +91,13 @@ namespace Server.Commands
 
         public static void Add_Static(int itemID, Point3D location, Map map, string name)
         {
-            var eable = map.GetItemsInRange(location, 0);
-
-            foreach (var item in eable)
+            foreach (var item in map.GetItemsInRange(location, 0))
             {
                 if (item is Sign && item.Z == location.Z && item.ItemID == itemID)
                 {
                     m_ToDelete.Enqueue(item);
                 }
             }
-
-            eable.Free();
 
             while (m_ToDelete.Count > 0)
             {

@@ -3638,9 +3638,8 @@ namespace Server.Mobiles
                 return false;
             }
 
-            var eable = GetItemsInRange<Corpse>(2);
             Corpse toRummage = null;
-            foreach (var c in eable)
+            foreach (var c in GetItemsInRange<Corpse>(2))
             {
                 if (c.Items.Count > 0)
                 {
@@ -3648,8 +3647,6 @@ namespace Server.Mobiles
                     break;
                 }
             }
-
-            eable.Free();
 
             if (toRummage == null)
             {
@@ -3813,7 +3810,6 @@ namespace Server.Mobiles
                     queue.Enqueue(pet);
                 }
             }
-            eable.Free();
 
             while (queue.Count > 0)
             {
@@ -5360,7 +5356,6 @@ namespace Server.Mobiles
                     queue.Enqueue(m);
                 }
             }
-            eable.Free();
 
             while (queue.Count > 0)
             {

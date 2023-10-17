@@ -50,17 +50,14 @@ namespace Server.Engines.Events
                 var rect = m_PumpkinFields[i];
 
                 var spawncount = rect.Height * rect.Width / 20;
-                var eable = map.GetItemsInBounds<HalloweenPumpkin>(rect);
                 var pumpkins = 0;
-                foreach (var p in eable)
+                foreach (var _ in map.GetItemsInBounds<HalloweenPumpkin>(rect))
                 {
                     if (pumpkins++ >= spawncount)
                     {
                         break;
                     }
                 }
-
-                eable.Free();
 
                 if (spawncount > pumpkins)
                 {

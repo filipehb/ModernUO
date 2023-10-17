@@ -210,7 +210,7 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
 
     public Rectangle3D[] Area { get; }
 
-    public Sector[] Sectors { get; private set; }
+    public Map.Sector[] Sectors { get; private set; }
 
     public bool Dynamic { get; }
 
@@ -295,15 +295,15 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
         }
 
         var sector = map.GetSector(p);
-        var list = sector.RegionRects;
+        var list = sector.Regions;
 
         for (var i = 0; i < list.Count; ++i)
         {
-            var regRect = list[i];
+            var region = list[i];
 
-            if (regRect.Contains(p))
+            if (region.Contains(p))
             {
-                return regRect.Region;
+                return region;
             }
         }
 
@@ -346,7 +346,7 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
 
         Map.RegisterRegion(this);
 
-        var sectors = new List<Sector>();
+        var sectors = new List<Map.Sector>();
 
         for (var i = 0; i < Area.Length; i++)
         {

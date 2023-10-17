@@ -346,8 +346,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                             state.Send(removeEntity);
                         }
                     }
-
-                    eable.Free();
                 }
 
                 Delta(ItemDelta.Update);
@@ -1148,8 +1146,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                         }
                     }
                 }
-
-                eable.Free();
             }
 
             RemDelta(ItemDelta.Update);
@@ -1179,8 +1175,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                         state.Send(removeEntity);
                     }
                 }
-
-                eable.Free();
             }
 
             var oldInternalLocation = m_Location;
@@ -1199,8 +1193,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                     SendInfoTo(state);
                 }
             }
-
-            eable.Free();
 
             m_Map.OnMove(oldInternalLocation, this);
 
@@ -1403,8 +1395,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 SendOPLPacketTo(state);
             }
         }
-
-        eable.Free();
     }
 
     public virtual void Delete()
@@ -1516,8 +1506,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                                 state.Send(removeEntity);
                             }
                         }
-
-                        eable.Free();
                     }
 
                     var oldLoc = m_Location;
@@ -1538,8 +1526,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                             SendInfoTo(state);
                         }
                     }
-
-                    eable.Free();
 
                     RemDelta(ItemDelta.Update);
                 }
@@ -2483,24 +2469,24 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         var map = m_Map;
 
         return map == null
-            ? Map.NullEnumerable<IEntity>.Instance
+            ? PooledEnumeration.NullEnumerable<IEntity>.Instance
             : map.GetObjectsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range);
     }
 
-    public IPooledEnumerable<Item> GetItemsInRange(int range)
-    {
-        var map = m_Map;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ItemEnumerable<Item> GetItemsInRange(int range) =>
+        m_Map == null ? Map.ItemEnumerable<Item>.Empty : m_Map.GetItemsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range);
 
-        return map?.GetItemsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range)
-               ?? Map.NullEnumerable<Item>.Instance;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ItemEnumerable<T> GetItemsInRange<T>(int range) where T : Item =>
+        m_Map == null ? Map.ItemEnumerable<T>.Empty : m_Map.GetItemsInRange<T>(m_Parent == null ? m_Location : GetWorldLocation(), range);
 
     public IPooledEnumerable<Mobile> GetMobilesInRange(int range)
     {
         var map = m_Map;
 
         return map?.GetMobilesInRange(m_Parent == null ? m_Location : GetWorldLocation(), range)
-               ?? Map.NullEnumerable<Mobile>.Instance;
+               ?? PooledEnumeration.NullEnumerable<Mobile>.Instance;
     }
 
     public IPooledEnumerable<NetState> GetClientsInRange(int range)
@@ -2508,7 +2494,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         var map = m_Map;
 
         return map.GetClientsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range)
-               ?? Map.NullEnumerable<NetState>.Instance;
+               ?? PooledEnumeration.NullEnumerable<NetState>.Instance;
     }
 
     public bool GetTempFlag(int flag) => ((LookupCompactInfo()?.m_TempFlags ?? 0) & flag) != 0;
@@ -3302,8 +3288,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 state.Send(buffer);
             }
         }
-
-        eable.Free();
     }
 
     public void PublicOverheadMessage(MessageType type, int hue, int number, string args = "")
@@ -3336,8 +3320,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 state.Send(buffer);
             }
         }
-
-        eable.Free();
     }
 
     public virtual void OnAfterDelete()
@@ -3565,10 +3547,8 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             z = top;
         }
 
-        var eable = map.GetItemsInRange(p, 0);
-
-        var items = new List<Item>();
-        foreach (var item in eable)
+        using var items = PooledRefList<Item>.Create();
+        foreach (var item in map.GetItemsInRange(p, 0))
         {
             if (item is BaseMulti || item.ItemID > TileData.MaxItemValue)
             {
@@ -3588,8 +3568,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
             items.Add(item);
         }
-
-        eable.Free();
 
         if (z == int.MinValue)
         {
@@ -3631,7 +3609,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             m_OpenSlots &= ~(((1 << bitCount) - 1) << zStart);
         }
 
-        for (var i = 0; i < items.Count; ++i)
+        for (var i = 0; i < items.Count; i++)
         {
             var item = items[i];
             var id = item.ItemData;
@@ -3792,8 +3770,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 state.Send(removeEntity);
             }
         }
-
-        eable.Free();
     }
 
     public virtual int GetDropSound() => -1;

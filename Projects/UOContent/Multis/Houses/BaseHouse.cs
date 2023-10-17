@@ -770,8 +770,6 @@ namespace Server.Multis
                     }
                 }
             }
-
-            eable.Free();
         }
 
         public List<Mobile> AvailableVendorsFor(Mobile m) =>
@@ -1143,6 +1141,7 @@ namespace Server.Multis
             MovingCrate.DropItem(item);
         }
 
+        // TODO: Convert to a ref struct enumerator
         public List<Item> GetItems()
         {
             if (Map == null || Map == Map.Internal)
@@ -1154,10 +1153,14 @@ namespace Server.Multis
             var end = new Point2D(X + Components.Max.X + 1, Y + Components.Max.Y + 1);
             var rect = new Rectangle2D(start, end);
 
-            var eable = Map.GetItemsInBounds(rect);
-            var list = eable.Where(item => item.Movable && IsInside(item)).ToList();
-
-            eable.Free();
+            var list = new List<Item>();
+            foreach (var item in Map.GetItemsInBounds(rect))
+            {
+                if (item.Movable && IsInside(item))
+                {
+                    list.Add(item);
+                }
+            }
 
             return list;
         }
@@ -3657,12 +3660,14 @@ namespace Server.Multis
             }
 
             var mcl = Components;
-            var eable =
-                map.GetItemsInBounds<Guildstone>(new Rectangle2D(X + mcl.Min.X, Y + mcl.Min.Y, mcl.Width, mcl.Height));
+            var bounds = new Rectangle2D(X + mcl.Min.X, Y + mcl.Min.Y, mcl.Width, mcl.Height);
 
-            var item = eable.FirstOrDefault(Contains);
-            eable.Free();
-            return item;
+            foreach (var gs in map.GetItemsInBounds<Guildstone>(bounds))
+            {
+                return gs;
+            }
+
+            return null;
         }
 
         public void ResetDynamicDecay()

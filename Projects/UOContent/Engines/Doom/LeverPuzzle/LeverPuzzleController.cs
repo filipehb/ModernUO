@@ -197,19 +197,14 @@ public partial class LeverPuzzleController : Item
     [Usage("GenLeverPuzzle"), Description("Generates lamp room and lever puzzle in doom.")]
     public static void GenLampPuzzle_OnCommand(CommandEventArgs e)
     {
-        var eable = Map.Malas.GetItemsInRange(lp_Center, 0);
-
-        foreach (var item in eable)
+        foreach (var item in Map.Malas.GetItemsInRange(lp_Center, 0))
         {
             if (item is LeverPuzzleController)
             {
-                eable.Free();
                 e.Mobile.SendMessage("Lamp room puzzle already exists: please delete the existing controller first ...");
                 return;
             }
         }
-
-        eable.Free();
 
         e.Mobile.SendMessage("Generating Lamp Room puzzle...");
 
@@ -533,8 +528,6 @@ public partial class LeverPuzzleController : Item
 
             state.Send(buffer);
         }
-
-        eable.Free();
     }
 
     private void Deserialize(IGenericReader reader, int version)
@@ -620,7 +613,6 @@ public partial class LeverPuzzleController : Item
                         var eable = m_IEntity.Map.GetMobilesInRange(m_IEntity.Location, 2);
                         var mobiles = new List<Mobile>();
                         mobiles.AddRange(eable);
-                        eable.Free();
 
                         for (var k = 0; k < mobiles.Count; k++)
                         {
