@@ -69,7 +69,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
         m_Name = name;
         Rules = rules;
         Regions = new Dictionary<string, Region>(StringComparer.OrdinalIgnoreCase);
-        InvalidSector = new Sector(0, 0, this);
+        _invalidSector = new Sector(0, 0, this);
         m_SectorsWidth = width >> SectorShift;
         m_SectorsHeight = height >> SectorShift;
         m_Sectors = new Sector[m_SectorsWidth][];
@@ -123,7 +123,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
     public MapRules Rules { get; set; }
 
-    public Sector InvalidSector { get; }
+    private readonly Sector _invalidSector;
 
     public string Name
     {
@@ -566,7 +566,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
             for (var y = cy - SectorActiveRange; y <= cy + SectorActiveRange; ++y)
             {
                 var sect = GetRealSector(x, y);
-                if (sect != InvalidSector)
+                if (sect != _invalidSector)
                 {
                     sect.Activate();
                 }
@@ -581,7 +581,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
             for (var y = cy - SectorActiveRange; y <= cy + SectorActiveRange; ++y)
             {
                 var sect = GetRealSector(x, y);
-                if (sect != InvalidSector && !PlayersInRange(sect, SectorActiveRange))
+                if (sect != _invalidSector && !PlayersInRange(sect, SectorActiveRange))
                 {
                     sect.Deactivate();
                 }
@@ -596,7 +596,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
             for (var y = sect.Y - range; y <= sect.Y + range; ++y)
             {
                 var check = GetRealSector(x, y);
-                if (check != InvalidSector && check.Clients.Count > 0)
+                if (check != _invalidSector && check.Clients.Count > 0)
                 {
                     return true;
                 }
@@ -614,8 +614,10 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void OnEnter(Mobile m) => OnEnter(m.Location, m);
+    public void OnEnter(Mobile m)
+    {
+        OnEnter(m.Location, m);
+    }
 
     public void OnEnter(Point3D p, Mobile m)
     {
@@ -650,8 +652,10 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
         }
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void OnLeave(Mobile m) => OnLeave(m.Location, m);
+    public void OnLeave(Mobile m)
+    {
+        OnLeave(m.Location, m);
+    }
 
     public void OnLeave(Point3D p, Mobile m)
     {
@@ -686,7 +690,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
         }
     }
 
-    public void RemoveMulti(BaseMulti m, Sector start, Sector end)
+    private void RemoveMulti(BaseMulti m, Sector start, Sector end)
     {
         if (this == Internal)
         {
@@ -702,7 +706,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
         }
     }
 
-    public void AddMulti(BaseMulti m, Sector start, Sector end)
+    private void AddMulti(BaseMulti m, Sector start, Sector end)
     {
         if (this == Internal)
         {
@@ -858,48 +862,15 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
         return p;
     }
 
-    public IPooledEnumerable<StaticTile[]> GetMultiTilesAt(int x, int y) =>
-        PooledEnumeration.GetMultiTiles(this, new Rectangle2D(x, y, 1, 1));
-
-    public IPooledEnumerable<IEntity> GetObjectsInRange(Point3D p) => GetObjectsInRange(p, Core.GlobalMaxUpdateRange);
-
-    public IPooledEnumerable<IEntity> GetObjectsInRange(Point3D p, int range) =>
-        GetObjectsInBounds(new Rectangle2D(p.m_X - range, p.m_Y - range, range * 2 + 1, range * 2 + 1));
-
-    public IPooledEnumerable<IEntity> GetObjectsInBounds(Rectangle2D bounds) =>
-        PooledEnumeration.GetEntities(this, bounds);
-
-    public IPooledEnumerable<NetState> GetClientsInRange(Point3D p) => GetClientsInRange(p, Core.GlobalMaxUpdateRange);
-
-    public IPooledEnumerable<NetState> GetClientsInRange(Point3D p, int range) =>
-        GetClientsInBounds(new Rectangle2D(p.m_X - range, p.m_Y - range, range * 2 + 1, range * 2 + 1));
-
-    public IPooledEnumerable<NetState> GetClientsInBounds(Rectangle2D bounds) =>
-        PooledEnumeration.GetClients(this, bounds);
-
-    public IPooledEnumerable<Mobile> GetMobilesInRange(Point3D p) => GetMobilesInRange(p, Core.GlobalMaxUpdateRange);
-
-    public IPooledEnumerable<Mobile> GetMobilesInRange(Point3D p, int range) => GetMobilesInRange<Mobile>(p, range);
-
-    public IPooledEnumerable<T> GetMobilesInRange<T>(Point3D p, int range) where T : Mobile =>
-        GetMobilesInBounds<T>(new Rectangle2D(p.m_X - range, p.m_Y - range, range * 2 + 1, range * 2 + 1));
-
-    public IPooledEnumerable<Mobile> GetMobilesInBounds(Rectangle2D bounds) => GetMobilesInBounds<Mobile>(bounds);
-
-    public IPooledEnumerable<T> GetMobilesInBounds<T>(Rectangle2D bounds) where T : Mobile =>
-        PooledEnumeration.GetMobiles<T>(this, bounds);
-
     public bool CanFit(
         Point3D p, int height, bool checkBlocksFit = false, bool checkMobiles = true,
         bool requireSurface = true
-    ) =>
-        CanFit(p.m_X, p.m_Y, p.m_Z, height, checkBlocksFit, checkMobiles, requireSurface);
+    ) => CanFit(p.m_X, p.m_Y, p.m_Z, height, checkBlocksFit, checkMobiles, requireSurface);
 
     public bool CanFit(
         Point2D p, int z, int height, bool checkBlocksFit = false, bool checkMobiles = true,
         bool requireSurface = true
-    ) =>
-        CanFit(p.m_X, p.m_Y, z, height, checkBlocksFit, checkMobiles, requireSurface);
+    ) => CanFit(p.m_X, p.m_Y, z, height, checkBlocksFit, checkMobiles, requireSurface);
 
     public bool CanFit(
         int x, int y, int z, int height, bool checkBlocksFit = false, bool checkMobiles = true,
@@ -981,10 +952,8 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         if (checkMobiles)
         {
-            for (var i = 0; i < mobs.Count; ++i)
+            foreach (var m in sector.Mobiles)
             {
-                var m = mobs[i];
-
                 if (m.Location.m_X == x && m.Location.m_Y == y && (m.AccessLevel == AccessLevel.Player || !m.Hidden) &&
                     m.Z + 16 > z && z + height > m.Z)
                 {
@@ -1039,7 +1008,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
             return sec;
         }
 
-        return InvalidSector;
+        return _invalidSector;
     }
 
     public bool LineOfSight(Point3D org, Point3D dest)
@@ -1436,15 +1405,12 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
     public class Sector
     {
         // TODO: Can we avoid this?
-        private static readonly List<Mobile> m_DefaultMobileList = new();
-        private static readonly List<NetState> m_DefaultClientList = new();
-        private static readonly List<BaseMulti> m_DefaultMultiList = new();
         private static readonly List<Region> m_DefaultRectList = new();
         private bool m_Active;
-        private List<NetState> _clients;
+        private ValueLinkList<NetState> _clients;
         private ValueLinkList<Item> _items;
-        private List<Mobile> _mobiles;
-        private List<BaseMulti> _multis;
+        private ValueLinkList<Mobile> _mobiles;
+        private List<BaseMulti> _multis = new();
         private List<Region> _regions;
 
         public Sector(int x, int y, Map owner)
@@ -1457,13 +1423,13 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         public List<Region> Regions => _regions ?? m_DefaultRectList;
 
-        public List<BaseMulti> Multis => _multis ?? m_DefaultMultiList;
+        internal List<BaseMulti> Multis => _multis;
 
-        public List<Mobile> Mobiles => _mobiles ?? m_DefaultMobileList;
+        internal ref ValueLinkList<Mobile> Mobiles => ref _mobiles;
 
         internal ref readonly ValueLinkList<Item> Items => ref _items;
 
-        public List<NetState> Clients => _clients ?? m_DefaultClientList;
+        internal ref readonly ValueLinkList<NetState> Clients => ref _clients;
 
         public bool Active => m_Active && Owner != Internal;
 
@@ -1475,7 +1441,26 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         public void OnClientChange(NetState oldState, NetState newState)
         {
-            Utility.Replace(ref _clients, oldState, newState);
+            var count = _clients.Count;
+
+            if (oldState != null)
+            {
+                _clients.Remove(oldState);
+            }
+
+            if (newState != null)
+            {
+                _clients.AddLast(newState);
+            }
+
+            if (_clients.Count == 0 && count > 0)
+            {
+                Owner.DeactivateSectors(X, Y);
+            }
+            else if (count == 0 && _clients.Count > 0)
+            {
+                Owner.ActivateSectors(X, Y);
+            }
         }
 
         public void OnEnter(Item item)
@@ -1490,11 +1475,11 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         public void OnEnter(Mobile mob)
         {
-            Utility.Add(ref _mobiles, mob);
+            _mobiles.AddLast(mob);
 
             if (mob.NetState != null)
             {
-                Utility.Add(ref _clients, mob.NetState);
+                _clients.AddLast(mob.NetState);
 
                 Owner.ActivateSectors(X, Y);
             }
@@ -1502,11 +1487,11 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         public void OnLeave(Mobile mob)
         {
-            Utility.Remove(ref _mobiles, mob);
+            _mobiles.Remove(mob);
 
             if (mob.NetState != null)
             {
-                Utility.Remove(ref _clients, mob.NetState);
+                _clients.Remove(mob.NetState);
 
                 Owner.DeactivateSectors(X, Y);
             }
@@ -1547,7 +1532,7 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         private void UpdateMobileRegions()
         {
-            if (_mobiles != null)
+            if (_mobiles.Count > 0)
             {
                 using var queue = PooledRefQueue<Mobile>.Create(_mobiles.Count);
                 foreach (var mob in _mobiles)
@@ -1564,12 +1549,12 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
 
         public void OnMultiEnter(BaseMulti multi)
         {
-            Utility.Add(ref _multis, multi);
+            _multis.Add(multi);
         }
 
         public void OnMultiLeave(BaseMulti multi)
         {
-            Utility.Remove(ref _multis, multi);
+            _multis.Remove(multi);
         }
 
         public void Activate()
@@ -1581,12 +1566,9 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
                     item.OnSectorActivate();
                 }
 
-                if (_mobiles != null)
+                foreach (var mob in _mobiles)
                 {
-                    foreach (var mob in _mobiles)
-                    {
-                        mob.OnSectorActivate();
-                    }
+                    mob.OnSectorActivate();
                 }
 
                 m_Active = true;
@@ -1602,12 +1584,9 @@ public sealed partial class Map : IComparable<Map>, ISpanFormattable, ISpanParsa
                     item.OnSectorDeactivate();
                 }
 
-                if (_mobiles != null)
+                foreach (var mob in _mobiles)
                 {
-                    foreach (var mob in _mobiles)
-                    {
-                        mob.OnSectorDeactivate();
-                    }
+                    mob.OnSectorDeactivate();
                 }
 
                 m_Active = false;

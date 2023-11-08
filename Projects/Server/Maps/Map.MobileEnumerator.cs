@@ -2,7 +2,7 @@
  * ModernUO                                                              *
  * Copyright 2019-2023 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: Map.Enumerators.cs                                              *
+ * File: Map.MobileEnumerator.cs                                         *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -21,67 +21,67 @@ namespace Server;
 
 public partial class Map
 {
-    private static ValueLinkList<Item> _emptyItemLinkList = new();
-    public static ref readonly ValueLinkList<Item> EmptyItemLinkList => ref _emptyItemLinkList;
+    private static ValueLinkList<Mobile> _emptyMobileLinkList = new();
+    public static ref readonly ValueLinkList<Mobile> EmptyMobileLinkList => ref _emptyMobileLinkList;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemAtEnumerable<Item> GetItemsAt(Point3D p) => GetItemsAt<Item>(p);
+    public MobileAtEnumerable<Mobile> GetMobilesAt(Point3D p) => GetMobilesAt<Mobile>(p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemAtEnumerable<T> GetItemsAt<T>(Point3D p) where T : Item => GetItemsAt<T>(new Point2D(p.X, p.Y));
+    public MobileAtEnumerable<T> GetMobilesAt<T>(Point3D p) where T : Mobile => GetMobilesAt<T>(new Point2D(p.X, p.Y));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemAtEnumerable<Item> GetItemsAt(int x, int y) => GetItemsAt<Item>(new Point2D(x, y));
+    public MobileAtEnumerable<Mobile> GetMobilesAt(int x, int y) => GetMobilesAt<Mobile>(new Point2D(x, y));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemAtEnumerable<T> GetItemsAt<T>(int x, int y) where T : Item => GetItemsAt<T>(new Point2D(x, y));
+    public MobileAtEnumerable<T> GetMobilesAt<T>(int x, int y) where T : Mobile => GetMobilesAt<T>(new Point2D(x, y));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemAtEnumerable<Item> GetItemsAt(Point2D p) => GetItemsAt<Item>(p);
+    public MobileAtEnumerable<Mobile> GetMobilesAt(Point2D p) => GetMobilesAt<Mobile>(p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemAtEnumerable<T> GetItemsAt<T>(Point2D p) where T : Item => new(this, p);
+    public MobileAtEnumerable<T> GetMobilesAt<T>(Point2D p) where T : Mobile => new(this, p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<Item> GetItemsInRange(Point3D p) => GetItemsInRange<Item>(p);
+    public MobileBoundsEnumerable<Mobile> GetMobilesInRange(Point3D p) => GetMobilesInRange<Mobile>(p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<Item> GetItemsInRange(Point3D p, int range) => GetItemsInRange<Item>(p, range);
+    public MobileBoundsEnumerable<Mobile> GetMobilesInRange(Point3D p, int range) => GetMobilesInRange<Mobile>(p, range);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<T> GetItemsInRange<T>(Point3D p) where T : Item => GetItemsInRange<T>(p, Core.GlobalMaxUpdateRange);
+    public MobileBoundsEnumerable<T> GetMobilesInRange<T>(Point3D p) where T : Mobile => GetMobilesInRange<T>(p, Core.GlobalMaxUpdateRange);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<T> GetItemsInRange<T>(Point3D p, int range) where T : Item =>
-        GetItemsInRange<T>(p.m_X, p.m_Y, range);
+    public MobileBoundsEnumerable<T> GetMobilesInRange<T>(Point3D p, int range) where T : Mobile =>
+        GetMobilesInRange<T>(p.m_X, p.m_Y, range);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<Item> GetItemsInRange(Point2D p) => GetItemsInRange<Item>(p);
+    public MobileBoundsEnumerable<Mobile> GetMobilesInRange(Point2D p) => GetMobilesInRange<Mobile>(p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<Item> GetItemsInRange(Point2D p, int range) => GetItemsInRange<Item>(p, range);
+    public MobileBoundsEnumerable<Mobile> GetMobilesInRange(Point2D p, int range) => GetMobilesInRange<Mobile>(p, range);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<T> GetItemsInRange<T>(Point2D p) where T : Item => GetItemsInRange<T>(p, Core.GlobalMaxUpdateRange);
+    public MobileBoundsEnumerable<T> GetMobilesInRange<T>(Point2D p) where T : Mobile => GetMobilesInRange<T>(p, Core.GlobalMaxUpdateRange);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<T> GetItemsInRange<T>(Point2D p, int range) where T : Item =>
-        GetItemsInRange<T>(p.m_X, p.m_Y, range);
+    public MobileBoundsEnumerable<T> GetMobilesInRange<T>(Point2D p, int range) where T : Mobile =>
+        GetMobilesInRange<T>(p.m_X, p.m_Y, range);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<T> GetItemsInRange<T>(int x, int y, int range) where T : Item =>
-        GetItemsInBounds<T>(new Rectangle2D(x - range, y - range, range * 2 + 1, range * 2 + 1));
+    public MobileBoundsEnumerable<T> GetMobilesInRange<T>(int x, int y, int range) where T : Mobile =>
+        GetMobilesInBounds<T>(new Rectangle2D(x - range, y - range, range * 2 + 1, range * 2 + 1));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<Item> GetItemsInBounds(Rectangle2D bounds) => GetItemsInBounds<Item>(bounds);
+    public MobileBoundsEnumerable<Mobile> GetMobilesInBounds(Rectangle2D bounds) => GetMobilesInBounds<Mobile>(bounds);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ItemBoundsEnumerable<T> GetItemsInBounds<T>(Rectangle2D bounds, bool makeBoundsInclusive = false) where T : Item =>
+    public MobileBoundsEnumerable<T> GetMobilesInBounds<T>(Rectangle2D bounds, bool makeBoundsInclusive = false) where T : Mobile =>
         new(this, bounds, makeBoundsInclusive);
 
-    public ref struct ItemAtEnumerable<T> where T : Item
+    public ref struct MobileAtEnumerable<T> where T : Mobile
     {
-        public static ItemAtEnumerable<T> Empty
+        public static MobileAtEnumerable<T> Empty
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => new();
@@ -90,38 +90,37 @@ public partial class Map
         private readonly Map _map;
         private readonly Point2D _location;
 
-        public ItemAtEnumerable(Map map, Point2D loc)
+        public MobileAtEnumerable(Map map, Point2D loc)
         {
             _map = map;
             _location = loc;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ItemAtEnumerator<T> GetEnumerator() => new(_map, _location);
+        public MobileAtEnumerator<T> GetEnumerator() => new(_map, _location);
     }
 
-    public ref struct ItemAtEnumerator<T> where T : Item
+    public ref struct MobileAtEnumerator<T> where T : Mobile
     {
         private bool _started;
         private Point2D _location;
-        private ref readonly ValueLinkList<Item> _linkList;
+        private ref readonly ValueLinkList<Mobile> _linkList;
         private int _version;
         private T _current;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ItemAtEnumerator(Map map, Point2D loc)
+        public MobileAtEnumerator(Map map, Point2D loc)
         {
             _started = false;
             _location = loc;
             if (map == null)
             {
-                _linkList = ref EmptyItemLinkList;
+                _linkList = ref EmptyMobileLinkList;
             }
             else
             {
-                _linkList = ref map.GetRealSector(loc.m_X, loc.m_Y).Items;
+                _linkList = ref map.GetRealSector(loc.m_X, loc.m_Y).Mobiles;
             }
-
             _version = 0;
             _current = null;
         }
@@ -130,7 +129,7 @@ public partial class Map
         public bool MoveNext()
         {
             ref var loc = ref _location;
-            Item current;
+            Mobile current;
 
             if (!_started)
             {
@@ -138,7 +137,7 @@ public partial class Map
                 _started = true;
                 _version = _linkList.Version;
 
-                if (current is T { Deleted: false, Parent: null } o && o.X == loc.m_X && o.Y == loc.m_Y)
+                if (current is T { Deleted: false } o && o.X == loc.m_X && o.Y == loc.m_Y)
                 {
                     _current = o;
                     return true;
@@ -157,7 +156,7 @@ public partial class Map
             {
                 current = current.Next;
 
-                if (current is T { Deleted: false, Parent: null } o && o.X == loc.m_X && o.Y == loc.m_Y)
+                if (current is T { Deleted: false } o && o.X == loc.m_X && o.Y == loc.m_Y)
                 {
                     _current = o;
                     return true;
@@ -174,9 +173,9 @@ public partial class Map
         }
     }
 
-    public ref struct ItemBoundsEnumerable<T> where T : Item
+    public ref struct MobileBoundsEnumerable<T> where T : Mobile
     {
-        public static ItemBoundsEnumerable<T> Empty
+        public static MobileBoundsEnumerable<T> Empty
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => new(null, Rectangle2D.Empty, false);
@@ -186,7 +185,7 @@ public partial class Map
         private Rectangle2D _bounds;
         private bool _makeBoundsInclusive;
 
-        public ItemBoundsEnumerable(Map map, Rectangle2D bounds, bool makeBoundsInclusive)
+        public MobileBoundsEnumerable(Map map, Rectangle2D bounds, bool makeBoundsInclusive)
         {
             _map = map;
             _bounds = bounds;
@@ -194,10 +193,10 @@ public partial class Map
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ItemEnumerator<T> GetEnumerator() => new(_map, _bounds, _makeBoundsInclusive);
+        public MobileEnumerator<T> GetEnumerator() => new(_map, _bounds, _makeBoundsInclusive);
     }
 
-    public ref struct ItemEnumerator<T> where T : Item
+    public ref struct MobileEnumerator<T> where T : Mobile
     {
         private Map _map;
         private int _sectorStartX;
@@ -208,12 +207,12 @@ public partial class Map
         private int _currentSectorX;
         private int _currentSectorY;
 
-        private ref readonly ValueLinkList<Item> _linkList;
+        private ref readonly ValueLinkList<Mobile> _linkList;
         private int _currentVersion;
         private T _current;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ItemEnumerator(Map map, Rectangle2D bounds, bool makeBoundsInclusive)
+        public MobileEnumerator(Map map, Rectangle2D bounds, bool makeBoundsInclusive)
         {
             _map = map;
             _bounds = bounds;
@@ -243,7 +242,7 @@ public partial class Map
                 return false;
             }
 
-            Item current = _current;
+            Mobile current = _current;
             ref Rectangle2D bounds = ref _bounds;
             var currentSectorX = _currentSectorX;
             var currentSectorY = _currentSectorY;
@@ -272,7 +271,7 @@ public partial class Map
                         return false;
                     }
 
-                    _linkList = ref map.GetRealSector(currentSectorX, currentSectorY).Items;
+                    _linkList = ref map.GetRealSector(currentSectorX, currentSectorY).Mobiles;
                     _currentVersion = _linkList.Version;
                     current = _linkList._first;
                 }
@@ -282,7 +281,7 @@ public partial class Map
                     throw new InvalidOperationException(CollectionThrowStrings.InvalidOperation_EnumFailedVersion);
                 }
 
-                if (current is T { Deleted: false, Parent: null } o && bounds.Contains(o.Location))
+                if (current is T { Deleted: false } o && bounds.Contains(o.Location))
                 {
                     _current = o;
                     return true;

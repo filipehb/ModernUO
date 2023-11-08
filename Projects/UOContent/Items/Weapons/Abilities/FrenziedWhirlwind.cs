@@ -15,7 +15,7 @@ namespace Server.Items
         public override bool RequiresTactics(Mobile from) => false;
         public override bool RequiresSecondarySkill(Mobile from) => true;
 
-        public override void OnHit(Mobile attacker, Mobile defender, int damage)
+        public override void OnHit(Mobile attacker, Mobile defender, int damage, WorldLocation worldLocation)
         {
             if (!Validate(attacker) || !CheckMana(attacker, true))
             {
@@ -39,8 +39,7 @@ namespace Server.Items
 
             bool didEffect = false;
 
-            var eable = attacker.GetMobilesInRange(1);
-            foreach (var m in eable)
+            foreach (var m in attacker.GetMobilesInRange(1))
             {
                 if (m?.Deleted == false && m != defender && m != attacker &&
                     SpellHelper.ValidIndirectTarget(attacker, m) &&

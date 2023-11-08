@@ -1066,21 +1066,19 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
         {
             var m = from;
 
-            var serial = Serial;
-
             if (strBonus != 0)
             {
-                m.AddStatMod(new StatMod(StatType.Str, $"{serial}Str", strBonus, TimeSpan.Zero));
+                m.AddStatMod(new StatMod(StatType.Str, $"{Serial}Str", strBonus, TimeSpan.Zero));
             }
 
             if (dexBonus != 0)
             {
-                m.AddStatMod(new StatMod(StatType.Dex, $"{serial}Dex", dexBonus, TimeSpan.Zero));
+                m.AddStatMod(new StatMod(StatType.Dex, $"{Serial}Dex", dexBonus, TimeSpan.Zero));
             }
 
             if (intBonus != 0)
             {
-                m.AddStatMod(new StatMod(StatType.Int, $"{serial}Int", intBonus, TimeSpan.Zero));
+                m.AddStatMod(new StatMod(StatType.Int, $"{Serial}Int", intBonus, TimeSpan.Zero));
             }
         }
 
@@ -1718,9 +1716,8 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
             return 0;
         }
 
-        var eable = defender.GetMobilesInRange<BaseCreature>(1);
         var inPack = 1;
-        foreach (var m in eable)
+        foreach (var m in defender.GetMobilesInRange<BaseCreature>(1))
         {
             if (m != attacker && (m.PackInstinct & bc.PackInstinct) != 0 && (m.Controlled || m.Summoned) &&
                 master == (m.ControlMaster ?? m.SummonMaster) && m.Combatant == defender)
@@ -1743,8 +1740,7 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
     {
         if (MirrorImage.HasClone(defender) && defender.Skills.Ninjitsu.Value / 150.0 > Utility.RandomDouble())
         {
-            var eable = defender.GetMobilesInRange<Clone>(4);
-            foreach (var m in eable)
+            foreach (var m in defender.GetMobilesInRange<Clone>(4))
             {
                 if (m?.Summoned == true && m.SummonMaster == defender)
                 {
@@ -1873,6 +1869,7 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
 
         damage = AOS.Scale(damage, 100 + percentageBonus);
 
+        var defLoc = new WorldLocation(defender);
         var bcAtt = attacker as BaseCreature;
         var bcDef = defender as BaseCreature;
 
@@ -2212,7 +2209,7 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
         bcAtt?.OnGaveMeleeAttack(defender, damage);
         bcDef?.OnGotMeleeAttack(attacker, damage);
 
-        a?.OnHit(attacker, defender, damage);
+        a?.OnHit(attacker, defender, damage, defLoc);
         move?.OnHit(attacker, defender, damage);
 
         ForceOfNature.OnHit(attacker, defender);
@@ -2278,23 +2275,26 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
 
     public virtual CheckSlayerResult CheckSlayers(Mobile attacker, Mobile defender)
     {
-        var atkWeapon = attacker.Weapon as BaseWeapon;
-        var atkSlayer = SlayerGroup.GetEntryByName(atkWeapon?.Slayer ?? SlayerName.None);
-        var atkSlayer2 = SlayerGroup.GetEntryByName(atkWeapon?.Slayer2 ?? SlayerName.None);
-
-        if (atkWeapon is ButchersWarCleaver && TalismanSlayer.Slays(TalismanSlayerName.Bovine, defender))
+        if (WeaponAbility.GetCurrentAbility(attacker) is not LightningArrow)
         {
-            return CheckSlayerResult.Slayer;
-        }
+            var atkWeapon = attacker.Weapon as BaseWeapon;
+            var atkSlayer = SlayerGroup.GetEntryByName(atkWeapon?.Slayer ?? SlayerName.None);
+            var atkSlayer2 = SlayerGroup.GetEntryByName(atkWeapon?.Slayer2 ?? SlayerName.None);
 
-        if (atkSlayer?.Slays(defender) == true || atkSlayer2?.Slays(defender) == true)
-        {
-            return CheckSlayerResult.Slayer;
-        }
+            if (atkWeapon is ButchersWarCleaver && TalismanSlayer.Slays(TalismanSlayerName.Bovine, defender))
+            {
+                return CheckSlayerResult.Slayer;
+            }
 
-        if (attacker.Talisman is BaseTalisman talisman && TalismanSlayer.Slays(talisman.Slayer, defender))
-        {
-            return CheckSlayerResult.Slayer;
+            if (atkSlayer?.Slays(defender) == true || atkSlayer2?.Slays(defender) == true)
+            {
+                return CheckSlayerResult.Slayer;
+            }
+
+            if (attacker.Talisman is BaseTalisman talisman && TalismanSlayer.Slays(talisman.Slayer, defender))
+            {
+                return CheckSlayerResult.Slayer;
+            }
         }
 
         if (!Core.SE)
@@ -3570,11 +3570,8 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
             return;
         }
 
-        var range = Core.ML ? 5 : 10;
-
-        var eable = from.GetMobilesInRange(range);
         using var queue = PooledRefQueue<Mobile>.Create();
-        foreach (var m in eable)
+        foreach (var m in from.GetMobilesInRange(Core.ML ? 5 : 10))
         {
             if (from != m && defender != m && SpellHelper.ValidIndirectTarget(from, m)
                 && from.CanBeHarmful(m, false) && (!Core.ML || from.InLOS(m)))
