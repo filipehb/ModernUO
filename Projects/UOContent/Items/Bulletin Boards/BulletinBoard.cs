@@ -169,7 +169,8 @@ namespace Server.Items
             {
                 thread.LastPostTime = Core.Now;
             }
-
+            //TODO Adicionar aqui sistema de postagem das coisas do BulletinBoard no Discord
+            //É possivel pegar o nome do board via atributo BoardName e etc
             AddItem(new BulletinMessage(from, thread, subject, lines));
         }
     }

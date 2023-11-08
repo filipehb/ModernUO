@@ -29,13 +29,13 @@ public class ClassPersistenceTests : IClassFixture<ServerFixture>
         target3.Account = account3;
         target3.Name = "target3";
 
-        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Agent, false);
-        ClassPersistence.SetClass(target2, Server.Custom.Classes.Classes.Burglar, false);
-        ClassPersistence.SetClass(target3, Server.Custom.Classes.Classes.Wanderer, false);
+        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.CacadorTesouros, false);
+        ClassPersistence.SetClass(target2, Server.Custom.Classes.Classes.Erudito, false);
+        ClassPersistence.SetClass(target3, Server.Custom.Classes.Classes.Andarilho, false);
 
-        Assert.Equal(Server.Custom.Classes.Classes.Burglar, ClassPersistence.GetPlayerClass(target2));
-        Assert.Equal(Server.Custom.Classes.Classes.Agent, ClassPersistence.GetPlayerClass(target));
-        Assert.Equal(Server.Custom.Classes.Classes.Wanderer, ClassPersistence.GetPlayerClass(target3));
+        Assert.Equal(Server.Custom.Classes.Classes.Erudito, ClassPersistence.GetPlayerClass(target2));
+        Assert.Equal(Server.Custom.Classes.Classes.CacadorTesouros, ClassPersistence.GetPlayerClass(target));
+        Assert.Equal(Server.Custom.Classes.Classes.Andarilho, ClassPersistence.GetPlayerClass(target3));
     }
 
     [Fact]
@@ -46,10 +46,10 @@ public class ClassPersistenceTests : IClassFixture<ServerFixture>
         target.Account = account;
         target.Name = "target";
 
-        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Agent, false);
-        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Warrior, true);
+        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Erudito, false);
+        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Guerreiro, true);
 
-        Assert.Equal(Server.Custom.Classes.Classes.Warrior, ClassPersistence.GetPlayerClass(target));
+        Assert.Equal(Server.Custom.Classes.Classes.Guerreiro, ClassPersistence.GetPlayerClass(target));
     }
 
     [Fact]
@@ -60,9 +60,9 @@ public class ClassPersistenceTests : IClassFixture<ServerFixture>
         target.Account = account;
         target.Name = "target";
 
-        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Agent, false);
+        ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Erudito, false);
 
-        Assert.False(ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Warrior, false));
-        Assert.Equal(Server.Custom.Classes.Classes.Agent, ClassPersistence.GetPlayerClass(target));
+        Assert.False(ClassPersistence.SetClass(target, Server.Custom.Classes.Classes.Guerreiro, false));
+        Assert.Equal(Server.Custom.Classes.Classes.Erudito, ClassPersistence.GetPlayerClass(target));
     }
 }
