@@ -639,13 +639,10 @@ namespace Server.Factions
             return true;
         }
 
-        public static void Initialize()
+        public static void Configure()
         {
             EventSink.Login += EventSink_Login;
             EventSink.Logout += EventSink_Logout;
-
-            Timer.DelayCall(TimeSpan.FromMinutes(1.0), TimeSpan.FromMinutes(10.0), HandleAtrophy);
-            Timer.DelayCall(TimeSpan.FromSeconds(30.0), TimeSpan.FromSeconds(30.0), ProcessTick);
 
             CommandSystem.Register("FactionElection", AccessLevel.GameMaster, FactionElection_OnCommand);
             CommandSystem.Register("FactionCommander", AccessLevel.Administrator, FactionCommander_OnCommand);
@@ -654,6 +651,14 @@ namespace Server.Factions
             CommandSystem.Register("FactionTownReset", AccessLevel.Administrator, FactionTownReset_OnCommand);
         }
 
+        public static void Initialize()
+        {
+            Timer.DelayCall(TimeSpan.FromMinutes(1.0), TimeSpan.FromMinutes(10.0), HandleAtrophy);
+            Timer.DelayCall(TimeSpan.FromSeconds(30.0), TimeSpan.FromSeconds(30.0), ProcessTick);
+        }
+
+        [Usage("FactionTownReset")]
+        [Description("Resets all faction town data in the world.")]
         public static void FactionTownReset_OnCommand(CommandEventArgs e)
         {
             var monoliths = BaseMonolith.Monoliths;
@@ -712,6 +717,8 @@ namespace Server.Factions
             }
         }
 
+        [Usage("FactionReset")]
+        [Description("Resets all faction data in the world.")]
         public static void FactionReset_OnCommand(CommandEventArgs e)
         {
             var monoliths = BaseMonolith.Monoliths;
@@ -784,6 +791,8 @@ namespace Server.Factions
             }
         }
 
+        [Usage("FactionItemReset")]
+        [Description("Resets all faction items in the world.")]
         public static void FactionItemReset_OnCommand(CommandEventArgs e)
         {
             var items = new List<Item>();
@@ -837,6 +846,8 @@ namespace Server.Factions
             e.Mobile.SendMessage($"{count} items reset");
         }
 
+        [Usage("FactionCommander")]
+        [Description("Sets the targeted player as the faction commander.")]
         public static void FactionCommander_OnCommand(CommandEventArgs e)
         {
             e.Mobile.SendMessage("Target a player to make them the faction commander.");
@@ -866,6 +877,8 @@ namespace Server.Factions
             }
         }
 
+        [Usage("FactionElection")]
+        [Description("Opens the election properties for the targeted faction stone.")]
         public static void FactionElection_OnCommand(CommandEventArgs e)
         {
             e.Mobile.SendMessage("Target a faction stone to open its election properties.");

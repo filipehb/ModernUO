@@ -599,18 +599,16 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
             var oldParent = m_Parent;
 
+            if (m_Map != null && oldParent == null && value != null)
+            {
+                m_Map.OnLeave(this);
+            }
+
             m_Parent = value;
 
-            if (m_Map != null)
+            if (m_Map != null && oldParent != null && value == null)
             {
-                if (oldParent != null && m_Parent == null)
-                {
-                    m_Map.OnEnter(this);
-                }
-                else if (m_Parent != null)
-                {
-                    m_Map.OnLeave(this);
-                }
+                m_Map.OnEnter(this);
             }
         }
     }
@@ -656,6 +654,17 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 var oldPileWeight = PileWeight;
 
                 m_Amount = value;
+
+                if (m_Amount <= 0)
+                {
+                    logger.Error(
+                        new Exception("Item.Amount <= 0 error"),
+                        "Item {Type} ({Serial}) was changed to amount of {Amount}, but must be at least 1",
+                        GetType(),
+                        Serial,
+                        m_Amount
+                    );
+                }
 
                 var newPileWeight = PileWeight;
 
@@ -1207,9 +1216,13 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             {
                 var old = m_Map;
 
-                if (m_Map != null && m_Parent == null)
+                if (m_Map != null)
                 {
-                    m_Map.OnLeave(this);
+                    if (m_Parent == null)
+                    {
+                        m_Map.OnLeave(this);
+                    }
+
                     SendRemovePacket();
                 }
 
@@ -3328,13 +3341,14 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
     }
 
-    private static readonly HashSet<string> _excludedProperties = new()
-    {
+    private static readonly HashSet<string> _excludedProperties =
+    [
+        "SaveBuffer",
         "Parent",
         "Next",
         "Previous",
         "OnLinkList"
-    };
+    ];
 
     public virtual bool DupeExcludedProperty(string propertyName) => _excludedProperties.Contains(propertyName);
 

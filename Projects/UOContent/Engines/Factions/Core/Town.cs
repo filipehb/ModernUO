@@ -420,6 +420,11 @@ namespace Server.Factions
             return true;
         }
 
+        public static void Configure()
+        {
+            CommandSystem.Register("GrantTownSilver", AccessLevel.Administrator, GrantTownSilver_OnCommand);
+        }
+
         public static void Initialize()
         {
             var towns = Towns;
@@ -429,8 +434,6 @@ namespace Server.Factions
                 towns[i].Sheriff = towns[i].Sheriff;
                 towns[i].Finance = towns[i].Finance;
             }
-
-            CommandSystem.Register("GrantTownSilver", AccessLevel.Administrator, GrantTownSilver_OnCommand);
         }
 
         public bool IsSheriff(Mobile mob) =>
@@ -541,6 +544,8 @@ namespace Server.Factions
             return null;
         }
 
+        [Usage("GrantTownSilver <amount>")]
+        [Description("Grants silver to the town of the current region.")]
         public static void GrantTownSilver_OnCommand(CommandEventArgs e)
         {
             var town = FromRegion(e.Mobile.Region);

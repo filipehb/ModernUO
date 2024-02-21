@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using ModernUO.Serialization;
 using Server.Collections;
 using Server.Engines.Plants;
-using Server.Engines.Quests;
 using Server.Engines.Quests.Hag;
 using Server.Engines.Quests.Matriarch;
 using Server.Mobiles;
@@ -608,7 +607,7 @@ public abstract partial class BaseBeverage : Item, IHasQuantity
         {
             if (from is PlayerMobile { Quest: SolenMatriarchQuest qs })
             {
-                QuestObjective obj = qs.FindObjective<GatherWaterObjective>();
+                var obj = qs.FindObjective<GatherWaterObjective>();
 
                 if (obj?.Completed == false)
                 {

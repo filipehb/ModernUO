@@ -32,11 +32,14 @@ public class SpawnerControllerGump : GumpGrid
 
     public static int GetButtonID(int type, int index) => 1 + type + index * TypeCount;
 
-    public static void Initialize()
+    public static void Configure()
     {
-        CommandSystem.Register("Spawn", AccessLevel.GameMaster, OpenSpawnGump_OnCommand);
+        CommandSystem.Register("SpawnAdmin", AccessLevel.GameMaster, OpenSpawnGump_OnCommand);
     }
 
+    [Usage("Spawn")]
+    [Aliases("Spawn")]
+    [Description("Opens the spawn administration gump.")]
     public static void OpenSpawnGump_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendGump(new SpawnerControllerGump(e.Mobile));

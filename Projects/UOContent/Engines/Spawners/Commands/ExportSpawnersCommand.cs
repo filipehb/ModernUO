@@ -24,7 +24,7 @@ namespace Server.Engines.Spawners;
 
 public class ExportSpawnersCommand : BaseCommand
 {
-    public static void Initialize()
+    public static void Configure()
     {
         TargetCommands.Register(new ExportSpawnersCommand());
     }
@@ -33,7 +33,7 @@ public class ExportSpawnersCommand : BaseCommand
     {
         AccessLevel = AccessLevel.GameMaster;
         Supports = CommandSupport.AllItems & ~CommandSupport.Contained;
-        Commands = new[] { "ExportSpawners" };
+        Commands = ["ExportSpawners"];
         ObjectTypes = ObjectTypes.Items;
         Usage = "ExportSpawners";
         Description = "Exports the given spawners to a file";

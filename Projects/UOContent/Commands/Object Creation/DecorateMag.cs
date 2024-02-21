@@ -18,13 +18,13 @@ namespace Server.Commands
         private static Mobile m_Mobile;
         private static int m_Count;
 
-        public static void Initialize()
+        public static void Configure()
         {
-            CommandSystem.Register("DecorateMag", AccessLevel.Administrator, DecorateMag_OnCommand);
+            CommandSystem.Register("DecorateMag", AccessLevel.Developer, DecorateMag_OnCommand);
         }
 
         [Usage("DecorateMag")]
-        [Description("Generates world decoration.")]
+        [Description("Generates world decoration for Magincia after it was ruined.")]
         private static void DecorateMag_OnCommand(CommandEventArgs e)
         {
             m_Mobile = e.Mobile;

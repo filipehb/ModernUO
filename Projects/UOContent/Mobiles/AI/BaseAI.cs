@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Server.Collections;
 using Server.ContextMenus;
-using Server.Engines.Quests;
 using Server.Engines.Quests.Necro;
 using Server.Engines.Spawners;
 using Server.Engines.Virtues;
@@ -1373,7 +1372,7 @@ public abstract class BaseAI
 
                 if (qs is DarkTidesQuest)
                 {
-                    QuestObjective obj = qs.FindObjective<FetchAbraxusScrollObjective>();
+                    var obj = qs.FindObjective<FetchAbraxusScrollObjective>();
 
                     if (obj?.Completed == false)
                     {

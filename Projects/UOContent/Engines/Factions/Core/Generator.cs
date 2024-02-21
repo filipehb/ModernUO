@@ -4,11 +4,14 @@ namespace Server.Factions
 {
     public static class Generator
     {
-        public static void Initialize()
+        public static void Configure()
         {
-            CommandSystem.Register("GenerateFactions", AccessLevel.Administrator, GenerateFactions_OnCommand);
+            CommandSystem.Register("GenerateFactions", AccessLevel.Developer, GenerateFactions_OnCommand);
         }
 
+        [Usage("GenerateFactions")]
+        [Aliases("FactionGen", "GenFactions")]
+        [Description("Enables and generates factions.")]
         public static void GenerateFactions_OnCommand(CommandEventArgs e)
         {
             var from = e.Mobile;

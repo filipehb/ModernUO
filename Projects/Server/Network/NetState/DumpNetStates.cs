@@ -19,9 +19,9 @@ namespace Server.Network;
 
 public static class DumpNetStates
 {
-    public static void Initialize()
+    public static void Configure()
     {
-        CommandSystem.Register("DumpNetStates", AccessLevel.Administrator, DumpNetStatesCommand);
+        CommandSystem.Register("DumpNetStates", AccessLevel.Developer, DumpNetStatesCommand);
     }
 
     public static void DumpNetStatesCommand(CommandEventArgs args)
