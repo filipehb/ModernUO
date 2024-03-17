@@ -51,8 +51,7 @@ namespace Server.Spells.Necromancy
                     var cbc = Caster as BaseCreature;
                     var isMonster = cbc?.Controlled == false && (cbc.IsAnimatedDead || !cbc.Summoned);
 
-                    var eable = Caster.GetMobilesInRange(Core.ML ? 4 : 5);
-                    foreach (var targ in eable)
+                    foreach (var targ in Caster.GetMobilesInRange(Core.ML ? 4 : 5))
                     {
                         if (targ == Caster
                             || !Caster.InLOS(targ)
@@ -84,8 +83,6 @@ namespace Server.Spells.Necromancy
                         pool.Enqueue(targ);
                     }
 
-                    eable.Free();
-
                     Effects.PlaySound(Caster.Location, map, 0x1FB);
                     Effects.PlaySound(Caster.Location, map, 0x10B);
                     Effects.SendLocationParticles(
@@ -108,7 +105,7 @@ namespace Server.Spells.Necromancy
 
                         double damage = Utility.RandomMinMax(30, 35);
 
-                        damage *= 300 + m.Karma / 100 + GetDamageSkill(Caster) * 10;
+                        damage *= 300 + m.Karma / 100.0 + GetDamageSkill(Caster) * 10;
                         damage /= 1000;
 
                         var sdiBonus = AosAttributes.GetValue(Caster, AosAttribute.SpellDamage);

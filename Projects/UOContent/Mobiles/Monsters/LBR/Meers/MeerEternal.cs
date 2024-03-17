@@ -81,16 +81,14 @@ namespace Server.Mobiles
 
         private void DoAreaLeech_Finish()
         {
-            var eable = GetMobilesInRange(6);
             using var queue = PooledRefQueue<Mobile>.Create();
-            foreach (var m in eable)
+            foreach (var m in GetMobilesInRange(6))
             {
                 if (CanBeHarmful(m) && IsEnemy(m))
                 {
                     queue.Enqueue(m);
                 }
             }
-            eable.Free();
 
             if (queue.Count == 0)
             {

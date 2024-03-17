@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Server.Collections;
 using Server.ContextMenus;
 using Server.Engines.Quests;
 using Server.Engines.Quests.Necro;
@@ -94,7 +95,6 @@ public abstract class BaseAI
         SkillName.Meditation
     };
 
-    private static readonly Queue<Item> m_Obstacles = new();
     protected ActionType m_Action;
 
     public BaseCreature m_Mobile;
@@ -2156,11 +2156,9 @@ public abstract class BaseAI
                 int x = m_Mobile.X, y = m_Mobile.Y;
                 Movement.Movement.Offset(d, ref x, ref y);
 
+                using var queue = PooledRefQueue<Item>.Create();
                 var destroyables = 0;
-
-                var eable = map.GetItemsInRange(new Point3D(x, y, m_Mobile.Location.Z), 1);
-
-                foreach (var item in eable)
+                foreach (var item in map.GetItemsInRange(new Point2D(x, y), 1))
                 {
                     if (canOpenDoors && item is BaseDoor door && door.Z + door.ItemData.Height > m_Mobile.Z &&
                         m_Mobile.Z + 16 > door.Z)
@@ -2172,7 +2170,7 @@ public abstract class BaseAI
 
                         if (!door.Locked || !door.UseLocks())
                         {
-                            m_Obstacles.Enqueue(door);
+                            queue.Enqueue(door);
                         }
 
                         if (!canDestroyObstacles)
@@ -2188,26 +2186,24 @@ public abstract class BaseAI
                             continue;
                         }
 
-                        m_Obstacles.Enqueue(item);
+                        queue.Enqueue(item);
                         ++destroyables;
                     }
                 }
-
-                eable.Free();
 
                 if (destroyables > 0)
                 {
                     Effects.PlaySound(new Point3D(x, y, m_Mobile.Z), m_Mobile.Map, 0x3B3);
                 }
 
-                if (m_Obstacles.Count > 0)
+                if (queue.Count > 0)
                 {
                     blocked = false; // retry movement
                 }
 
-                while (m_Obstacles.Count > 0)
+                while (queue.Count > 0)
                 {
-                    var item = m_Obstacles.Dequeue();
+                    var item = queue.Dequeue();
 
                     if (item is BaseDoor door)
                     {
@@ -2243,7 +2239,7 @@ public abstract class BaseAI
                                 if (check.Movable && check.ItemData.Impassable &&
                                     cont.Z + check.ItemData.Height > m_Mobile.Z)
                                 {
-                                    m_Obstacles.Enqueue(check);
+                                    queue.Enqueue(check);
                                 }
                             }
 
@@ -2608,9 +2604,7 @@ public abstract class BaseAI
         Mobile enemySummonMob = null;
         var enemySummonVal = double.MinValue;
 
-        var eable = map.GetMobilesInRange(m_Mobile.Location, iRange);
-
-        foreach (var m in eable)
+        foreach (var m in map.GetMobilesInRange(m_Mobile.Location, iRange))
         {
             if (m.Deleted || m.Blessed)
             {
@@ -2764,8 +2758,6 @@ public abstract class BaseAI
             }
         }
 
-        eable.Free();
-
         m_Mobile.FocusMob = newFocusMob ?? enemySummonMob;
         return m_Mobile.FocusMob != null;
     }
@@ -2814,9 +2806,7 @@ public abstract class BaseAI
             return;
         }
 
-        var eable = m_Mobile.GetMobilesInRange(m_Mobile.RangePerception);
-
-        foreach (var trg in eable)
+        foreach (var trg in m_Mobile.GetMobilesInRange(m_Mobile.RangePerception))
         {
             if (trg != m_Mobile && trg.Player && trg.Alive && trg.Hidden && trg.AccessLevel == AccessLevel.Player &&
                 m_Mobile.InLOS(trg))
@@ -2845,8 +2835,6 @@ public abstract class BaseAI
                 }
             }
         }
-
-        eable.Free();
     }
 
     public virtual void Deactivate()

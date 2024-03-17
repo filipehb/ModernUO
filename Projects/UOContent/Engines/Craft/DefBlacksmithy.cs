@@ -39,9 +39,7 @@ public class DefBlacksmithy : CraftSystem
             return;
         }
 
-        var eable = map.GetItemsInRange(from.Location, range);
-
-        foreach (var item in eable)
+        foreach (var item in map.GetItemsInRange(from.Location, range))
         {
             var type = item.GetType();
 
@@ -64,8 +62,6 @@ public class DefBlacksmithy : CraftSystem
                 }
             }
         }
-
-        eable.Free();
 
         for (var x = -range; (!anvil || !forge) && x <= range; ++x)
         {

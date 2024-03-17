@@ -129,9 +129,7 @@ public partial class Campfire : Item
             }
         }
 
-        var eable = GetClientsInRange(SecureRange);
-
-        foreach (var state in eable)
+        foreach (var state in GetClientsInRange(SecureRange))
         {
             if (state.Mobile is PlayerMobile pm && GetEntry(pm) == null)
             {
@@ -143,8 +141,6 @@ public partial class Campfire : Item
                 pm.SendLocalizedMessage(500620); // You feel it would take a few moments to secure your camp.
             }
         }
-
-        eable.Free();
     }
 
     private void ClearEntries()

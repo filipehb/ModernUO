@@ -46,16 +46,14 @@ namespace Server.Spells.Chivalry
 
                 var chiv = Caster.Skills.Chivalry.Value;
 
-                var eable = Caster.GetMobilesInRange(8);
                 using var queue = PooledRefQueue<Mobile>.Create();
-                foreach (var m in eable)
+                foreach (var m in Caster.GetMobilesInRange(8))
                 {
                     if (Caster != m && SpellHelper.ValidIndirectTarget(Caster, m) && Caster.CanBeHarmful(m, false))
                     {
                         queue.Enqueue(m);
                     }
                 }
-                eable.Free();
 
                 while (queue.Count > 0)
                 {

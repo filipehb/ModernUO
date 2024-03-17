@@ -138,23 +138,15 @@ public partial class Barracoon : BaseChampion
             return;
         }
 
-        var eable = GetMobilesInRange<BaseCreature>(10);
         var rats = 0;
 
-        foreach (var m in eable)
+        foreach (var m in GetMobilesInRange<BaseCreature>(10))
         {
-            if (m is Ratman or RatmanArcher or RatmanMage)
+            if (m is Ratman or RatmanArcher or RatmanMage && ++rats >= 16)
             {
-                rats++;
-                if (rats >= 16)
-                {
-                    eable.Free();
-                    return;
-                }
+                return;
             }
         }
-
-        eable.Free();
 
         PlaySound(0x3D);
 

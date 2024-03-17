@@ -3221,7 +3221,7 @@ namespace Server.Mobiles
                 ControlTarget = ControlMaster;
                 ControlOrder = OrderType.Follow;
 
-                ProcessDeltaQueue();
+                ProcessDelta();
                 SendIncomingPacket();
                 SendIncomingPacket();
 
@@ -3638,9 +3638,8 @@ namespace Server.Mobiles
                 return false;
             }
 
-            var eable = GetItemsInRange<Corpse>(2);
             Corpse toRummage = null;
-            foreach (var c in eable)
+            foreach (var c in GetItemsInRange<Corpse>(2))
             {
                 if (c.Items.Count > 0)
                 {
@@ -3648,8 +3647,6 @@ namespace Server.Mobiles
                     break;
                 }
             }
-
-            eable.Free();
 
             if (toRummage == null)
             {
@@ -3803,8 +3800,7 @@ namespace Server.Mobiles
             }
 
             using var queue = PooledRefQueue<Mobile>.Create();
-            var eable = master.GetMobilesInRange(3);
-            foreach (var m in eable)
+            foreach (var m in master.GetMobilesInRange(3))
             {
                 if (m is BaseCreature
                         { Controlled: true, ControlOrder: OrderType.Guard or OrderType.Follow or OrderType.Come } pet &&
@@ -3813,7 +3809,6 @@ namespace Server.Mobiles
                     queue.Enqueue(pet);
                 }
             }
-            eable.Free();
 
             while (queue.Count > 0)
             {
@@ -3838,7 +3833,7 @@ namespace Server.Mobiles
             Stam = StamMax;
             Mana = 0;
 
-            ProcessDeltaQueue();
+            ProcessDelta();
 
             IsDeadPet = false;
 
@@ -5350,9 +5345,8 @@ namespace Server.Mobiles
                 return;
             }
 
-            var eable = GetMobilesInRange(AuraRange);
             using var queue = PooledRefQueue<Mobile>.Create();
-            foreach (var m in eable)
+            foreach (var m in GetMobilesInRange(AuraRange))
             {
                 if (m != this && CanBeHarmful(m, false) && (Core.AOS || InLOS(m)) &&
                     (m is BaseCreature bc && (bc.Controlled || bc.Summoned || bc.Team != Team) || m.Player))
@@ -5360,7 +5354,6 @@ namespace Server.Mobiles
                     queue.Enqueue(m);
                 }
             }
-            eable.Free();
 
             while (queue.Count > 0)
             {

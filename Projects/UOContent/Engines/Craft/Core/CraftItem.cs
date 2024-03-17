@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Server.Collections;
 using Server.Commands;
 using Server.Factions;
 using Server.Items;
@@ -388,12 +387,10 @@ namespace Server.Engines.Craft
                 return false;
             }
 
-            var eable = map.GetItemsInRange(from.Location, 2);
-            foreach (var item in eable)
+            foreach (var item in map.GetItemsInRange(from.Location, 2))
             {
                 if (item.Z + 16 > item.Z && item.Z + 16 > item.Z && Find(item.ItemID, itemIDs))
                 {
-                    eable.Free();
                     return true;
                 }
             }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Server.Collections;
 using Server.ContextMenus;
 using Server.Items;
 using Server.Logging;
@@ -175,7 +176,7 @@ public enum ExpandFlag
     Spawner = 0x100
 }
 
-public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEntity
+public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEntity, IValueLinkListNode<Item>
 {
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(Item));
 
@@ -253,6 +254,11 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
     }
 
+    // Sectors
+    public Item Next { get; set; }
+    public Item Previous { get; set; }
+    public bool OnLinkList { get; set; }
+
     /// <summary>
     ///     The <see cref="Mobile" /> who is currently <see cref="Mobile.Holding">holding</see> this item.
     /// </summary>
@@ -326,11 +332,9 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 {
                     var worldLoc = GetWorldLocation();
 
-                    var eable = m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange());
-
                     Span<byte> removeEntity = stackalloc byte[OutgoingEntityPackets.RemoveEntityLength].InitializePacket();
 
-                    foreach (var state in eable)
+                    foreach (var state in m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange()))
                     {
                         var m = state.Mobile;
 
@@ -340,8 +344,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                             state.Send(removeEntity);
                         }
                     }
-
-                    eable.Free();
                 }
 
                 Delta(ItemDelta.Update);
@@ -1102,9 +1104,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 Span<byte> saWorldItem = stackalloc byte[OutgoingEntityPackets.MaxWorldEntityPacketLength].InitializePacket();
                 Span<byte> hsWorldItem = stackalloc byte[OutgoingEntityPackets.MaxWorldEntityPacketLength].InitializePacket();
 
-                var eable = m_Map.GetClientsInRange(m_Location, GetMaxUpdateRange());
-
-                foreach (var state in eable)
+                foreach (var state in m_Map.GetClientsInRange(m_Location, GetMaxUpdateRange()))
                 {
                     var m = state.Mobile;
 
@@ -1142,8 +1142,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                         }
                     }
                 }
-
-                eable.Free();
             }
 
             RemDelta(ItemDelta.Update);
@@ -1155,15 +1153,11 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
         else if (m_Map != null)
         {
-            IPooledEnumerable<NetState> eable;
-
             if (oldLocation.m_X != 0)
             {
-                eable = m_Map.GetClientsInRange(oldLocation, GetMaxUpdateRange());
-
                 Span<byte> removeEntity = stackalloc byte[OutgoingEntityPackets.RemoveEntityLength].InitializePacket();
 
-                foreach (var state in eable)
+                foreach (var state in m_Map.GetClientsInRange(oldLocation, GetMaxUpdateRange()))
                 {
                     var m = state.Mobile;
 
@@ -1173,8 +1167,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                         state.Send(removeEntity);
                     }
                 }
-
-                eable.Free();
             }
 
             var oldInternalLocation = m_Location;
@@ -1182,9 +1174,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             m_Location = location;
             OnLocationChange(oldRealLocation);
 
-            eable = m_Map.GetClientsInRange(m_Location, GetMaxUpdateRange());
-
-            foreach (var state in eable)
+            foreach (var state in m_Map.GetClientsInRange(m_Location, GetMaxUpdateRange()))
             {
                 var m = state.Mobile;
 
@@ -1193,8 +1183,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                     SendInfoTo(state);
                 }
             }
-
-            eable.Free();
 
             m_Map.OnMove(oldInternalLocation, this);
 
@@ -1354,9 +1342,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             return;
         }
 
-        var eable = map.GetClientsInRange(worldLoc, GetMaxUpdateRange());
-
-        foreach (var state in eable)
+        foreach (var state in map.GetClientsInRange(worldLoc, GetMaxUpdateRange()))
         {
             var m = state.Mobile;
 
@@ -1397,8 +1383,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 SendOPLPacketTo(state);
             }
         }
-
-        eable.Free();
     }
 
     public virtual void Delete()
@@ -1492,15 +1476,11 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             {
                 if (m_Parent == null)
                 {
-                    IPooledEnumerable<NetState> eable;
-
                     if (m_Location.m_X != 0)
                     {
-                        eable = m_Map.GetClientsInRange(oldLocation, GetMaxUpdateRange());
-
                         Span<byte> removeEntity = stackalloc byte[OutgoingEntityPackets.RemoveEntityLength].InitializePacket();
 
-                        foreach (var state in eable)
+                        foreach (var state in m_Map.GetClientsInRange(oldLocation, GetMaxUpdateRange()))
                         {
                             var m = state.Mobile;
 
@@ -1510,8 +1490,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                                 state.Send(removeEntity);
                             }
                         }
-
-                        eable.Free();
                     }
 
                     var oldLoc = m_Location;
@@ -1519,9 +1497,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
                     SetLastMoved();
 
-                    eable = m_Map.GetClientsInRange(m_Location, GetMaxUpdateRange());
-
-                    foreach (var state in eable)
+                    foreach (var state in m_Map.GetClientsInRange(m_Location, GetMaxUpdateRange()))
                     {
                         var m = state.Mobile;
 
@@ -1532,8 +1508,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                             SendInfoTo(state);
                         }
                     }
-
-                    eable.Free();
 
                     RemDelta(ItemDelta.Update);
                 }
@@ -2247,9 +2221,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
     public bool AtPoint(int x, int y) => m_Location.m_X == x && m_Location.m_Y == y;
 
-    public virtual bool CanDecay() =>
-        Decays && Parent == null && Map != Map.Internal;
-
+    public virtual bool CanDecay() => Decays && Parent == null && Map != Map.Internal;
 
     public virtual bool OnDecay() =>
         CanDecay() && Region.Find(Location, Map).OnDecay(this);
@@ -2473,38 +2445,42 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool GetSaveFlag(SaveFlag flags, SaveFlag toGet) => (flags & toGet) != 0;
 
-    public IPooledEnumerable<IEntity> GetObjectsInRange(int range)
-    {
-        var map = m_Map;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ItemAtEnumerable<Item> GetItemsAt() =>
+        m_Map == null ? Map.ItemAtEnumerable<Item>.Empty : m_Map.GetItemsAt(m_Parent == null ? m_Location : GetWorldLocation());
 
-        return map == null
-            ? Map.NullEnumerable<IEntity>.Instance
-            : map.GetObjectsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range);
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ItemAtEnumerable<T> GetItemsAt<T>() where T : Item =>
+        m_Map == null ? Map.ItemAtEnumerable<T>.Empty : m_Map.GetItemsAt<T>(m_Parent == null ? m_Location : GetWorldLocation());
 
-    public IPooledEnumerable<Item> GetItemsInRange(int range)
-    {
-        var map = m_Map;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ItemBoundsEnumerable<Item> GetItemsInRange(int range) =>
+        m_Map == null ? Map.ItemBoundsEnumerable<Item>.Empty : m_Map.GetItemsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range);
 
-        return map?.GetItemsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range)
-               ?? Map.NullEnumerable<Item>.Instance;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ItemBoundsEnumerable<T> GetItemsInRange<T>(int range) where T : Item =>
+        m_Map == null ? Map.ItemBoundsEnumerable<T>.Empty : m_Map.GetItemsInRange<T>(m_Parent == null ? m_Location : GetWorldLocation(), range);
 
-    public IPooledEnumerable<Mobile> GetMobilesInRange(int range)
-    {
-        var map = m_Map;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.MobileAtEnumerable<Mobile> GetMobilesAt() => GetMobilesAt<Mobile>();
 
-        return map?.GetMobilesInRange(m_Parent == null ? m_Location : GetWorldLocation(), range)
-               ?? Map.NullEnumerable<Mobile>.Instance;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.MobileAtEnumerable<T> GetMobilesAt<T>() where T : Mobile =>
+        m_Map == null ? Map.MobileAtEnumerable<T>.Empty : m_Map.GetMobilesAt<T>(m_Parent == null ? m_Location : GetWorldLocation());
 
-    public IPooledEnumerable<NetState> GetClientsInRange(int range)
-    {
-        var map = m_Map;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.MobileBoundsEnumerable<Mobile> GetMobilesInRange(int range) => GetMobilesInRange<Mobile>(range);
 
-        return map.GetClientsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range)
-               ?? Map.NullEnumerable<NetState>.Instance;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.MobileBoundsEnumerable<T> GetMobilesInRange<T>(int range) where T : Mobile =>
+        m_Map == null ? Map.MobileBoundsEnumerable<T>.Empty : m_Map.GetMobilesInRange<T>(m_Parent == null ? m_Location : GetWorldLocation(), range);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ClientAtEnumerable GetClientsAt() => m_Map == null ? Map.ClientAtEnumerable.Empty : Map.GetClientsAt(m_Parent == null ? m_Location : GetWorldLocation());
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.ClientBoundsEnumerable GetClientsInRange(int range) =>
+        m_Map == null ? Map.ClientBoundsEnumerable.Empty : Map.GetClientsInRange(m_Parent == null ? m_Location : GetWorldLocation(), range);
 
     public bool GetTempFlag(int flag) => ((LookupCompactInfo()?.m_TempFlags ?? 0) & flag) != 0;
 
@@ -3275,11 +3251,10 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
 
         var worldLoc = GetWorldLocation();
-        var eable = m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange());
 
         Span<byte> buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLength(text)].InitializePacket();
 
-        foreach (var state in eable)
+        foreach (var state in m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange()))
         {
             var m = state.Mobile;
 
@@ -3297,8 +3272,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 state.Send(buffer);
             }
         }
-
-        eable.Free();
     }
 
     public void PublicOverheadMessage(MessageType type, int hue, int number, string args = "")
@@ -3309,11 +3282,10 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
 
         var worldLoc = GetWorldLocation();
-        var eable = m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange());
 
         Span<byte> buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedLength(args)].InitializePacket();
 
-        foreach (var state in eable)
+        foreach (var state in m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange()))
         {
             var m = state.Mobile;
 
@@ -3331,8 +3303,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 state.Send(buffer);
             }
         }
-
-        eable.Free();
     }
 
     public virtual void OnAfterDelete()
@@ -3360,6 +3330,16 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             OnItemRemoved(item);
         }
     }
+
+    private static readonly HashSet<string> _excludedProperties = new()
+    {
+        "Parent",
+        "Next",
+        "Previous",
+        "OnLinkList"
+    };
+
+    public virtual bool DupeExcludedProperty(string propertyName) => _excludedProperties.Contains(propertyName);
 
     public virtual void OnAfterDuped(Item newItem)
     {
@@ -3560,10 +3540,8 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             z = top;
         }
 
-        var eable = map.GetItemsInRange(p, 0);
-
-        var items = new List<Item>();
-        foreach (var item in eable)
+        using var items = PooledRefList<Item>.Create();
+        foreach (var item in map.GetItemsInRange(p, 0))
         {
             if (item is BaseMulti || item.ItemID > TileData.MaxItemValue)
             {
@@ -3583,8 +3561,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
             items.Add(item);
         }
-
-        eable.Free();
 
         if (z == int.MinValue)
         {
@@ -3626,7 +3602,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             m_OpenSlots &= ~(((1 << bitCount) - 1) << zStart);
         }
 
-        for (var i = 0; i < items.Count; ++i)
+        for (var i = 0; i < items.Count; i++)
         {
             var item = items[i];
             var id = item.ItemData;
@@ -3773,11 +3749,9 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             return;
         }
 
-        var eable = m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange());
-
         Span<byte> removeEntity = stackalloc byte[OutgoingEntityPackets.RemoveEntityLength].InitializePacket();
 
-        foreach (var state in eable)
+        foreach (var state in m_Map.GetClientsInRange(worldLoc, GetMaxUpdateRange()))
         {
             var m = state.Mobile;
 
@@ -3787,8 +3761,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 state.Send(removeEntity);
             }
         }
-
-        eable.Free();
     }
 
     public virtual int GetDropSound() => -1;

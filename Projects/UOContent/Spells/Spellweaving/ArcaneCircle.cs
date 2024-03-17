@@ -97,18 +97,13 @@ namespace Server.Spells.Spellweaving
                 }
             }
 
-            var eable = map.GetItemsInRange(location, 0);
-
-            foreach (var item in eable)
+            foreach (var item in map.GetItemsAt(location))
             {
                 if (item.Z + item.ItemData.CalcHeight == location.Z && IsValidTile(item.ItemID))
                 {
-                    eable.Free();
                     return true;
                 }
             }
-
-            eable.Free();
 
             return false;
         }
@@ -119,18 +114,14 @@ namespace Server.Spells.Spellweaving
         private bool CheckArcanists()
         {
             var spellWeaving = Caster.Skills.Spellweaving.Value;
-            var eable = Caster.GetMobilesInRange(1);
-            foreach (var m in eable)
+            foreach (var m in Caster.GetMobilesInRange(1))
             {
                 if (m != Caster && m is PlayerMobile && Caster.CanBeBeneficial(m, false) &&
                     Math.Abs(spellWeaving - m.Skills.Spellweaving.Value) <= 20)
                 {
-                    eable.Free();
                     return true;
                 }
             }
-
-            eable.Free();
             return false;
         }
 
@@ -140,9 +131,7 @@ namespace Server.Spells.Spellweaving
             // Everyone gets the Arcane Focus, power capped elsewhere
 
             var pool = PooledRefQueue<Mobile>.Create();
-            var eable = Caster.GetMobilesInRange(1);
-
-            foreach (var m in eable)
+            foreach (var m in Caster.GetMobilesInRange(1))
             {
                 if (m != Caster && m is PlayerMobile && Caster.CanBeBeneficial(m, false) &&
                     Math.Abs(spellWeaving - m.Skills.Spellweaving.Value) <= 20)
@@ -150,8 +139,6 @@ namespace Server.Spells.Spellweaving
                     pool.Enqueue(m);
                 }
             }
-
-            eable.Free();
             return pool;
         }
 

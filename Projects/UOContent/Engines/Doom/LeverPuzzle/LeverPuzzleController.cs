@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ModernUO.Serialization;
+using Server.Collections;
 using Server.Mobiles;
 using Server.Network;
 using Server.Spells;
@@ -197,19 +198,14 @@ public partial class LeverPuzzleController : Item
     [Usage("GenLeverPuzzle"), Description("Generates lamp room and lever puzzle in doom.")]
     public static void GenLampPuzzle_OnCommand(CommandEventArgs e)
     {
-        var eable = Map.Malas.GetItemsInRange(lp_Center, 0);
-
-        foreach (var item in eable)
+        foreach (var item in Map.Malas.GetItemsAt(lp_Center))
         {
             if (item is LeverPuzzleController)
             {
-                eable.Free();
                 e.Mobile.SendMessage("Lamp room puzzle already exists: please delete the existing controller first ...");
                 return;
             }
         }
-
-        eable.Free();
 
         e.Mobile.SendMessage("Generating Lamp Room puzzle...");
 
@@ -509,9 +505,7 @@ public partial class LeverPuzzleController : Item
     {
         Span<byte> buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLength(Msgs[index])].InitializePacket();
 
-        var eable = from.Map.GetClientsInRange(from.Location);
-
-        foreach (var state in eable)
+        foreach (var state in from.Map.GetClientsInRange(from.Location))
         {
             var length = OutgoingMessagePackets.CreateMessage(
                 buffer,
@@ -533,8 +527,6 @@ public partial class LeverPuzzleController : Item
 
             state.Send(buffer);
         }
-
-        eable.Free();
     }
 
     private void Deserialize(IGenericReader reader, int version)
@@ -612,31 +604,35 @@ public partial class LeverPuzzleController : Item
                     PlayerSendASCII(m_Player, 1); // A speeding rock  ...
                     PlaySounds(m_Player.Location, !m_Player.Female ? fs2 : ms2);
 
+                    using var queue = PooledRefQueue<Mobile>.Create();
                     var j = Utility.Random(6, 10);
                     for (var i = 0; i < j; i++)
                     {
-                        IEntity m_IEntity = new Entity(Serial.Zero, RandomPointIn(m_Player.Location, 10), m_Player.Map);
+                        var entity = new Entity(Serial.Zero, RandomPointIn(m_Player.Location, 10), m_Player.Map);
 
-                        var eable = m_IEntity.Map.GetMobilesInRange(m_IEntity.Location, 2);
-                        var mobiles = new List<Mobile>();
-                        mobiles.AddRange(eable);
-                        eable.Free();
-
-                        for (var k = 0; k < mobiles.Count; k++)
+                        // Queue the mobiles because we cannot modify while iterating through mobiles in range
+                        foreach (var m in entity.Map.GetMobilesInRange(entity.Location, 2))
                         {
-                            if (IsValidDamagable(mobiles[k]) && mobiles[k] != m_Player)
+                            if (IsValidDamagable(m) && m != m_Player)
                             {
-                                PlayEffect(m_Player, mobiles[k], Rock(), 8, true);
-                                DoDamage(mobiles[k], 25, 30, false);
-
-                                if (mobiles[k].Player)
-                                {
-                                    POHMessage(mobiles[k], 2); // OUCH!
-                                }
+                                queue.Enqueue(m);
                             }
                         }
 
-                        PlayEffect(m_Player, m_IEntity, Rock(), 8, false);
+                        while (queue.Count > 0)
+                        {
+                            var m = queue.Dequeue();
+
+                            PlayEffect(m_Player, m, Rock(), 8, true);
+                            DoDamage(m, 25, 30, false);
+
+                            if (m.Player)
+                            {
+                                POHMessage(m, 2); // OUCH!
+                            }
+                        }
+
+                        PlayEffect(m_Player, entity, Rock(), 8, false);
                     }
                 }
             }

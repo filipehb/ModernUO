@@ -677,11 +677,12 @@ public static class Utility
         }
     }
 
-    public static void FormatBuffer(this TextWriter op, ReadOnlySpan<byte> first, ReadOnlySpan<byte> second, int totalLength)
+    public static void FormatBuffer(this TextWriter op, ReadOnlySpan<byte> data)
     {
         op.WriteLine("        0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F");
         op.WriteLine("       -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --");
 
+        var totalLength = data.Length;
         if (totalLength <= 0)
         {
             op.WriteLine("0000   ");
@@ -692,21 +693,8 @@ public static class Utility
         Span<char> lineChars = stackalloc char[47];
         for (var i = 0; i < totalLength; i += 16)
         {
-            var length = Math.Min(totalLength - i, 16);
-            if (i < first.Length)
-            {
-                var firstLength = Math.Min(length, first.Length - i);
-                first.Slice(i, firstLength).CopyTo(lineBytes);
-
-                if (firstLength < length)
-                {
-                    second[..(length - first.Length - i)].CopyTo(lineBytes[(length - firstLength)..]);
-                }
-            }
-            else
-            {
-                second.Slice(i - first.Length, length).CopyTo(lineBytes);
-            }
+            var length = Math.Min(data.Length - i, 16);
+            data.Slice(i, length).CopyTo(lineBytes);
 
             var charsWritten = ((ReadOnlySpan<byte>)lineBytes[..length]).ToSpacedHexString(lineChars);
 
@@ -1002,6 +990,17 @@ public static class Utility
     public static void Shuffle<T>(this Span<T> list)
     {
         var count = list.Length;
+        for (var i = 0; i < count; i++)
+        {
+            var r = RandomMinMax(i, count - 1);
+            (list[r], list[i]) = (list[i], list[r]);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void Shuffle<T>(this PooledRefList<T> list)
+    {
+        var count = list.Count;
         for (var i = 0; i < count; i++)
         {
             var r = RandomMinMax(i, count - 1);
@@ -1763,7 +1762,7 @@ public static class Utility
         span == default || span.IsEmpty || span.IsWhiteSpace();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool InTypeList(this Item item, Type[] types) => item.GetType().InTypeList(types);
+    public static bool InTypeList<T>(this T obj, Type[] types) => obj.GetType().InTypeList(types);
 
     public static bool InTypeList(this Type t, Type[] types)
     {

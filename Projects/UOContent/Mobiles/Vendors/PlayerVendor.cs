@@ -1268,17 +1268,13 @@ namespace Server.Mobiles
                     }
                     else
                     {
-                        var mobiles = e.Mobile.GetMobilesInRange<PlayerVendor>(2);
-
-                        foreach (var m in mobiles)
+                        foreach (var m in e.Mobile.GetMobilesInRange<PlayerVendor>(2))
                         {
                             if (m.CanSee(e.Mobile) && m.InLOS(e.Mobile))
                             {
                                 m.OpenBackpack(from);
                             }
                         }
-
-                        mobiles.Free();
                     }
 
                     e.Handled = true;

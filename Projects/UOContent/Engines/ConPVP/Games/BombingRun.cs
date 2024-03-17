@@ -140,8 +140,7 @@ namespace Server.Engines.ConPVP
                 return;
             }
 
-            var eable = GetClientsInRange(0);
-            foreach (var ns in eable)
+            foreach (var ns in GetClientsAt())
             {
                 var m = ns.Mobile;
 
@@ -467,10 +466,8 @@ namespace Server.Engines.ConPVP
 
                     if (landTile.ID == 0x244 && statics.Length == 0) // 0x244 = invalid land tile
                     {
-                        var eable = Map.GetItemsInRange(point, 0);
-
                         var empty = true;
-                        foreach (var item in eable)
+                        foreach (var item in Map.GetItemsAt(point))
                         {
                             if (item != this)
                             {
@@ -478,8 +475,6 @@ namespace Server.Engines.ConPVP
                                 break;
                             }
                         }
-
-                        eable.Free();
 
                         if (empty)
                         {
@@ -515,8 +510,7 @@ namespace Server.Engines.ConPVP
 
                 var rect = new Rectangle2D(pTop.X, pTop.Y, pBottom.X - pTop.X + 1, pBottom.Y - pTop.Y + 1);
 
-                var area = Map.GetItemsInBounds(rect);
-                foreach (var i in area)
+                foreach (var i in Map.GetItemsInBounds(rect))
                 {
                     if (i == this || i.ItemID >= 0x4000)
                     {
@@ -570,7 +564,6 @@ namespace Server.Engines.ConPVP
                         continue;
                     }
 
-                    area.Free();
                     if (i is BRGoal goal)
                     {
                         var oldLoc = new Point3D(GetWorldLocation());
@@ -591,10 +584,7 @@ namespace Server.Engines.ConPVP
                     return;
                 }
 
-                area.Free();
-
-                var clients = Map.GetClientsInBounds(rect);
-                foreach (var ns in clients)
+                foreach (var ns in Map.GetClientsInBounds(rect))
                 {
                     var m = ns.Mobile;
 
@@ -622,15 +612,11 @@ namespace Server.Engines.ConPVP
                         continue;
                     }
 
-                    clients.Free();
-
                     // TODO: probably need to change this a lot...
                     DoCatch(m);
 
                     return;
                 }
-
-                clients.Free();
 
                 m_PathIdx = pathCheckEnd;
 
@@ -672,8 +658,7 @@ namespace Server.Engines.ConPVP
                     }
                 }
 
-                var eable = GetItemsInRange(0);
-                foreach (var item in eable)
+                foreach (var item in GetItemsAt())
                 {
                     if (item.Visible && item != this)
                     {
@@ -684,8 +669,6 @@ namespace Server.Engines.ConPVP
                         }
                     }
                 }
-
-                eable.Free();
 
                 Z = myZ;
                 m_Flying = false;

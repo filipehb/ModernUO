@@ -118,9 +118,7 @@ namespace Server.Mobiles
             {
                 m_NextAbilityTime = Core.Now + TimeSpan.FromSeconds(Utility.RandomMinMax(10, 15));
 
-                var eable = GetMobilesInRange(8);
-
-                foreach (var m in eable)
+                foreach (var m in GetMobilesInRange(8))
                 {
                     if (m is not MeerWarrior || !IsFriend(m) || !CanBeBeneficial(m) || m.Hits >= m.HitsMax || m.Poisoned ||
                         MortalStrike.IsWounded(m))
@@ -139,8 +137,6 @@ namespace Server.Mobiles
                     m.FixedParticles(0x376A, 9, 32, 5030, EffectLayer.Waist);
                     m.PlaySound(0x202);
                 }
-
-                eable.Free();
             }
 
             base.OnThink();

@@ -41,22 +41,19 @@ namespace Server.Spells.Mysticism
 
                 Caster.PlaySound(0x64C);
 
+                var primarySkill = GetBaseSkill(Caster);
+                var secondarySkill = GetDamageSkill(Caster);
+                var cureChance = 10000 + (int)((primarySkill + secondarySkill) / 2 * 75);
+
                 using var pool = PooledRefQueue<Mobile>.Create();
                 pool.Enqueue(m);
 
                 var casterParty = Party.Get(Caster);
                 if (casterParty != null)
                 {
-                    IPooledEnumerable eable = Caster.Map.GetMobilesInRange(m.Location, 2);
-
-                    foreach (Mobile mob in eable)
+                    foreach (Mobile mob in Caster.Map.GetMobilesInRange(m.Location, 2))
                     {
-                        if (mob == m)
-                        {
-                            continue;
-                        }
-
-                        if (casterParty.Contains(mob) && Caster.CanBeBeneficial(mob, false))
+                        if (mob != m && casterParty.Contains(mob) && Caster.CanBeBeneficial(mob, false))
                         {
                             pool.Enqueue(mob);
                             if (pool.Count == 4)
@@ -65,12 +62,7 @@ namespace Server.Spells.Mysticism
                             }
                         }
                     }
-
-                    eable.Free();
                 }
-
-                var primarySkill = GetBaseSkill(Caster);
-                var secondarySkill = GetDamageSkill(Caster);
 
                 var toHeal = ((int)((primarySkill + secondarySkill) / 4.0) + Utility.RandomMinMax(-3, 3)) / pool.Count;
 
@@ -106,9 +98,9 @@ namespace Server.Spells.Mysticism
                     if (target.Poisoned)
                     {
                         var poisonLevel = target.Poison.Level + 1;
-                        var chanceToCure = 10000 + (int)((primarySkill + secondarySkill) / 2 * 75) - poisonLevel * 1750;
+                        var chanceToCure = cureChance - poisonLevel * 1750;
 
-                        if (chanceToCure > Utility.Random(10000) && target.CurePoison(Caster))
+                        if (chanceToCure > 10000 || chanceToCure > Utility.Random(10000) && target.CurePoison(Caster))
                         {
                             toHealMod -= (int)(toHeal * poisonLevel * 0.15);
                         }

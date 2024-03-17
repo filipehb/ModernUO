@@ -22,8 +22,6 @@ namespace Server.Movement
 
         private readonly List<Item>[] _pools = { new(), new(), new(), new() };
 
-        private readonly HashSet<Sector> _sectors = new();
-
         private MovementImpl()
         {
         }
@@ -83,156 +81,57 @@ namespace Server.Movement
 
             var checkMobs = (m as BaseCreature)?.Controlled == false && (xForward != _goal.X || yForward != _goal.Y);
 
-            if (checkDiagonals)
+            if (checkMobs)
             {
-                var sectorStart = map.GetSector(xStart, yStart);
-                var sectorForward = map.GetSector(xForward, yForward);
-                var sectorLeft = map.GetSector(xLeft, yLeft);
-                var sectorRight = map.GetSector(xRight, yRight);
-
-                _sectors.Add(sectorStart);
-
-                _sectors.Add(sectorForward);
-                _sectors.Add(sectorLeft);
-                _sectors.Add(sectorRight);
-
-                foreach (var sector in _sectors)
+                foreach (var mob in map.GetMobilesInRange(loc, 1))
                 {
-                    for (var j = 0; j < sector.Items.Count; ++j)
+                    if (mob.AtPoint(xForward, yForward))
                     {
-                        var item = sector.Items[j];
-
-                        if (ignoreMovableImpassables && item.Movable && item.ItemData.ImpassableSurface)
-                        {
-                            continue;
-                        }
-
-                        if (!item.ItemData[reqFlags])
-                        {
-                            continue;
-                        }
-
-                        if (item is BaseMulti || item.ItemID > TileData.MaxItemValue)
-                        {
-                            continue;
-                        }
-
-                        if (sector == sectorStart && item.AtWorldPoint(xStart, yStart))
-                        {
-                            itemsStart.Add(item);
-                        }
-                        else if (sector == sectorForward && item.AtWorldPoint(xForward, yForward))
-                        {
-                            itemsForward.Add(item);
-                        }
-                        else if (sector == sectorLeft && item.AtWorldPoint(xLeft, yLeft))
-                        {
-                            itemsLeft.Add(item);
-                        }
-                        else if (sector == sectorRight && item.AtWorldPoint(xRight, yRight))
-                        {
-                            itemsRight.Add(item);
-                        }
+                        mobsForward.Add(mob);
                     }
-
-                    if (checkMobs)
+                    else if (checkDiagonals && mob.AtPoint(xLeft, yLeft))
                     {
-                        for (var j = 0; j < sector.Mobiles.Count; ++j)
-                        {
-                            var mob = sector.Mobiles[j];
-
-                            if (sector == sectorForward && mob.X == xForward && mob.Y == yForward)
-                            {
-                                mobsForward.Add(mob);
-                            }
-                            else if (sector == sectorLeft && mob.X == xLeft && mob.Y == yLeft)
-                            {
-                                mobsLeft.Add(mob);
-                            }
-                            else if (sector == sectorRight && mob.X == xRight && mob.Y == yRight)
-                            {
-                                mobsRight.Add(mob);
-                            }
-                        }
+                        mobsLeft.Add(mob);
+                    }
+                    else if (checkDiagonals && mob.AtPoint(xRight, yRight))
+                    {
+                        mobsRight.Add(mob);
                     }
                 }
-
-                _sectors.Clear();
             }
-            else
+
+            foreach (var item in map.GetItemsInRange(loc, 1))
             {
-                var sectorStart = map.GetSector(xStart, yStart);
-                var sectorForward = map.GetSector(xForward, yForward);
-                var sectorStartIsForward = sectorStart == sectorForward;
-
-                if (!sectorStartIsForward)
+                if (ignoreMovableImpassables && item.Movable && item.ItemData.ImpassableSurface)
                 {
-                    for (var i = 0; i < sectorForward.Items.Count; ++i)
-                    {
-                        var item = sectorForward.Items[i];
-
-                        if (ignoreMovableImpassables && item.Movable && item.ItemData.ImpassableSurface)
-                        {
-                            continue;
-                        }
-
-                        if (!item.ItemData[reqFlags])
-                        {
-                            continue;
-                        }
-
-                        if (item is BaseMulti || item.ItemID > TileData.MaxItemValue)
-                        {
-                            continue;
-                        }
-
-                        if (item.AtWorldPoint(xForward, yForward))
-                        {
-                            itemsForward.Add(item);
-                        }
-                    }
+                    continue;
                 }
 
-                for (var i = 0; i < sectorStart.Items.Count; ++i)
+                if (!item.ItemData[reqFlags] || item.ItemID > TileData.MaxItemValue || item.Parent != null)
                 {
-                    var item = sectorStart.Items[i];
-
-                    if (ignoreMovableImpassables && item.Movable && item.ItemData.ImpassableSurface)
-                    {
-                        continue;
-                    }
-
-                    if (!item.ItemData[reqFlags])
-                    {
-                        continue;
-                    }
-
-                    if (item is BaseMulti || item.ItemID > TileData.MaxItemValue)
-                    {
-                        continue;
-                    }
-
-                    if (item.AtWorldPoint(xStart, yStart))
-                    {
-                        itemsStart.Add(item);
-                    }
-                    else if (sectorStartIsForward && item.AtWorldPoint(xForward, yForward))
-                    {
-                        itemsForward.Add(item);
-                    }
+                    continue;
                 }
 
-                if (checkMobs)
+                if (item is BaseMulti)
                 {
-                    for (var i = 0; i < sectorForward.Mobiles.Count; ++i)
-                    {
-                        var mob = sectorForward.Mobiles[i];
+                    continue;
+                }
 
-                        if (mob.X == xForward && mob.Y == yForward)
-                        {
-                            mobsForward.Add(mob);
-                        }
-                    }
+                if (item.AtPoint(xStart, yStart))
+                {
+                    itemsStart.Add(item);
+                }
+                else if (item.AtPoint(xForward, yForward))
+                {
+                    itemsForward.Add(item);
+                }
+                else if (checkDiagonals && item.AtPoint(xLeft, yLeft))
+                {
+                    itemsLeft.Add(item);
+                }
+                else if (checkDiagonals && item.AtPoint(xRight, yRight))
+                {
+                    itemsRight.Add(item);
                 }
             }
 
@@ -280,7 +179,7 @@ namespace Server.Movement
 
         public bool CheckMovement(Mobile m, Direction d, out int newZ) => CheckMovement(m, m.Map, m.Location, d, out newZ);
 
-        private bool IsOk(
+        private static bool IsOk(
             bool ignoreDoors, bool ignoreSpellFields, int ourZ, int ourTop, StaticTile[] tiles, List<Item> items
         )
         {
@@ -332,7 +231,7 @@ namespace Server.Movement
             return true;
         }
 
-        private bool Check(
+        private static bool Check(
             Map map,
             Mobile m,
             List<Item> items,
@@ -602,7 +501,7 @@ namespace Server.Movement
         private static bool CanMoveOver(Mobile m, Mobile t) =>
             !t.Alive || !m.Alive || t.IsDeadBondedPet || m.IsDeadBondedPet || t.Hidden && t.AccessLevel > AccessLevel.Player;
 
-        private void GetStartZ(Mobile m, Map map, Point3D loc, List<Item> itemList, out int zLow, out int zTop)
+        private static void GetStartZ(Mobile m, Map map, Point3D loc, List<Item> itemList, out int zLow, out int zTop)
         {
             int xCheck = loc.X, yCheck = loc.Y;
 
@@ -700,7 +599,7 @@ namespace Server.Movement
             }
         }
 
-        public void Offset(Direction d, ref int x, ref int y)
+        public static void Offset(Direction d, ref int x, ref int y)
         {
             switch (d & Direction.Mask)
             {

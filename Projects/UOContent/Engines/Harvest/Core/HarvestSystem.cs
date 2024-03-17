@@ -307,17 +307,13 @@ namespace Server.Engines.Harvest
                 return false;
             }
 
-            var eable = m.GetItemsInRange(0);
-            foreach (var i in eable)
+            foreach (var i in m.GetItemsAt())
             {
                 if (i.StackWith(m, i, false))
                 {
-                    eable.Free();
                     return true;
                 }
             }
-
-            eable.Free();
 
             item.MoveToWorld(m.Location, map);
             return true;

@@ -58,44 +58,42 @@ namespace Server.SkillHandlers
 
                 if (range > 0)
                 {
-                    var inRange = src.Map.GetMobilesInRange(p, range);
-
-                    foreach (var trg in inRange)
+                    foreach (var trg in src.Map.GetMobilesInRange(p, range))
                     {
-                        if (trg.Hidden && src != trg)
+                        if (!trg.Hidden || src == trg)
                         {
-                            var ss = srcSkill + Utility.Random(21) - 10;
-                            var ts = trg.Skills.Hiding.Value + Utility.Random(21) - 10;
-
-                            if (src.AccessLevel >= trg.AccessLevel && (ss >= ts || inHouse && house.IsInside(trg)))
-                            {
-                                if (trg is ShadowKnight && (trg.X != p.X || trg.Y != p.Y))
-                                {
-                                    continue;
-                                }
-
-                                trg.RevealingAction();
-                                trg.SendLocalizedMessage(500814); // You have been revealed!
-                                foundAnyone = true;
-                            }
+                            continue;
                         }
-                    }
 
-                    inRange.Free();
+                        var ss = srcSkill + Utility.Random(21) - 10;
+                        var ts = trg.Skills.Hiding.Value + Utility.Random(21) - 10;
+
+                        if (src.AccessLevel < trg.AccessLevel || ss < ts && (!inHouse || !house.IsInside(trg)))
+                        {
+                            continue;
+                        }
+
+                        if (trg is ShadowKnight && (trg.X != p.X || trg.Y != p.Y))
+                        {
+                            continue;
+                        }
+
+                        trg.RevealingAction();
+                        trg.SendLocalizedMessage(500814); // You have been revealed!
+                        foundAnyone = true;
+                    }
 
                     if (Faction.Find(src) != null)
                     {
-                        var itemsInRange = src.Map.GetItemsInRange<BaseFactionTrap>(p, range);
-
-                        foreach (var trap in itemsInRange)
+                        foreach (var trap in src.Map.GetItemsInRange<BaseFactionTrap>(p, range))
                         {
                             if (src.CheckTargetSkill(SkillName.DetectHidden, trap, 80.0, 100.0))
                             {
                                 src.SendLocalizedMessage(
-                                    1042712,
+                                    1042712, // You reveal a trap placed by a faction:
                                     true,
                                     $" {(trap.Faction == null ? "" : trap.Faction.Definition.FriendlyName)}"
-                                ); // You reveal a trap placed by a faction:
+                                );
 
                                 trap.Visible = true;
                                 trap.BeginConceal();
@@ -103,8 +101,6 @@ namespace Server.SkillHandlers
                                 foundAnyone = true;
                             }
                         }
-
-                        itemsInRange.Free();
                     }
                 }
 

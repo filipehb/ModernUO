@@ -74,17 +74,14 @@ public partial class HordeMinionFamiliar : BaseFamiliar
             return;
         }
 
-        var eable = GetItemsInRange(2);
         using var queue = PooledRefQueue<Item>.Create();
-        foreach (var item in eable)
+        foreach (var item in GetItemsInRange(2))
         {
             if (item.Movable && item.Stackable)
             {
                 queue.Enqueue(item);
             }
         }
-
-        eable.Free();
 
         var pickedUp = 3;
 

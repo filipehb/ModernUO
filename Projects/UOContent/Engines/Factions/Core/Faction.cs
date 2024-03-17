@@ -255,50 +255,71 @@ namespace Server.Factions
 
         public static bool IsNearType(Mobile mob, Type type, int range)
         {
-            var mobs = type.IsSubclassOf(typeof(Mobile));
-            var items = type.IsSubclassOf(typeof(Item));
-
-            if (!(items || mobs))
+            if (type.IsAssignableTo(typeof(Mobile)))
             {
-                return false;
-            }
-
-            var eable = mob.Map.GetObjectsInRange(mob.Location, range);
-            foreach (var obj in eable)
-            {
-                if (!mobs && obj is Mobile || !items && obj is Item)
+                foreach (var obj in mob.Map.GetMobilesInRange(mob.Location, range))
                 {
-                    continue;
-                }
-
-                if (type.IsInstanceOfType(obj))
-                {
-                    eable.Free();
-                    return true;
+                    if (type.IsInstanceOfType(obj))
+                    {
+                        return true;
+                    }
                 }
             }
 
-            eable.Free();
+            if (type.IsAssignableTo(typeof(Item)))
+            {
+                foreach (var item in mob.Map.GetItemsInRange(mob.Location, range))
+                {
+                    if (type.IsInstanceOfType(item))
+                    {
+                        return true;
+                    }
+                }
+            }
 
             return false;
         }
 
         public static bool IsNearType(Mobile mob, Type[] types, int range)
         {
-            var eable = mob.GetObjectsInRange(range);
-            foreach (var obj in eable)
+            bool mobs = false;
+            bool items = false;
+            for (var i = 0; !(mobs && items) && i < types.Length; i++)
             {
-                for (int i = 0; i < types.Length; i++)
+                var type = types[i];
+                if (type.IsAssignableTo(typeof(Mobile)))
                 {
-                    if (types[i].IsInstanceOfType(obj))
+                    mobs = true;
+                }
+
+                if (type.IsAssignableTo(typeof(Item)))
+                {
+                    items = true;
+                }
+            }
+
+            if (mobs)
+            {
+                foreach (var m in mob.Map.GetMobilesInRange(mob.Location, range))
+                {
+                    if (m.InTypeList(types))
                     {
-                        eable.Free();
                         return true;
                     }
                 }
             }
 
-            eable.Free();
+            if (items)
+            {
+                foreach (var item in mob.Map.GetItemsInRange(mob.Location, range))
+                {
+                    if (item.InTypeList(types))
+                    {
+                        return true;
+                    }
+                }
+            }
+
             return false;
         }
 

@@ -370,18 +370,14 @@ public partial class CharacterStatue : Mobile, IRewardItem
         }
 
         ProcessDelta();
-
-        var eable = Map.GetClientsInRange(Location);
         Span<byte> animPacket = stackalloc byte[CharacterStatuePackets.StatueAnimationPacketLength].InitializePacket();
 
-        foreach (var state in eable)
+        foreach (var state in Map.GetClientsInRange(Location))
         {
             state.Mobile.ProcessDelta();
             CharacterStatuePackets.CreateStatueAnimation(animPacket, Serial, 1, m_Animation, m_Frames);
             state.Send(animPacket);
         }
-
-        eable.Free();
     }
 
     private class DemolishEntry : ContextMenuEntry

@@ -48,16 +48,13 @@ namespace Server.Spells.Fourth
                         pool.Enqueue(directTarget);
                     }
 
-                    var eable = map.GetMobilesInRange(loc, 2);
-                    foreach (var m in eable)
+                    foreach (var m in map.GetMobilesInRange(loc, 2))
                     {
                         if (m != directTarget && AreaCanTarget(m, feluccaRules))
                         {
                             pool.Enqueue(m);
                         }
                     }
-
-                    eable.Free();
 
                     Effects.PlaySound(loc, Caster.Map, 0x299);
 
