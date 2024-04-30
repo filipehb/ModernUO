@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpMasterGump.cs                                               *
+ * File: GumpPage.cs                                                     *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,14 +18,21 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpMasterGump : GumpEntry
+public class GumpPage : GumpEntry
 {
-    public GumpMasterGump(int gumpID) => GumpID = gumpID;
+    public GumpPage(int page) => Page = page;
 
-    public int GumpID { get; set; }
+    public int Page { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.WriteAscii($"{{ mastergump {GumpID} }}");
+        if (Page == 0)
+        {
+            writer.Write("{ page 0 }"u8);
+        }
+        else
+        {
+            writer.WriteAscii($"{{ page {Page} }}");
+        }
     }
 }

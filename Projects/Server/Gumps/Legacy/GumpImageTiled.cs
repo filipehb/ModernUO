@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpTooltip.cs                                                  *
+ * File: GumpImageTiled.cs                                               *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,22 +18,29 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-// Note, on OSI, the tooltip supports ONLY clilocs as far as I can figure out,
-// and the tooltip ONLY works after the buttonTileArt (as far as I can tell from testing)
-public class GumpTooltip : GumpEntry
+public class GumpImageTiled : GumpEntry
 {
-    public GumpTooltip(int number, string args)
+    public GumpImageTiled(int x, int y, int width, int height, int gumpID)
     {
-        Number = number;
-        Args = args;
+        X = x;
+        Y = y;
+        Width = width;
+        Height = height;
+        GumpID = gumpID;
     }
 
-    public int Number { get; set; }
+    public int X { get; set; }
 
-    public string Args { get; set; }
+    public int Y { get; set; }
+
+    public int Width { get; set; }
+
+    public int Height { get; set; }
+
+    public int GumpID { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.WriteAscii(string.IsNullOrEmpty(Args) ? $"{{ tooltip {Number} }}" : $"{{ tooltip {Number} @{Args}@ }}");
+        writer.WriteAscii($"{{ gumppictiled {X} {Y} {Width} {Height} {GumpID} }}");
     }
 }

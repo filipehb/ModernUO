@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpItem.cs                                                     *
+ * File: GumpAlphaRegion.cs                                              *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,26 +18,26 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpItem : GumpEntry
+public class GumpAlphaRegion : GumpEntry
 {
-    public GumpItem(int x, int y, int itemID, int hue = 0)
+    public GumpAlphaRegion(int x, int y, int width, int height)
     {
         X = x;
         Y = y;
-        ItemID = itemID;
-        Hue = hue;
+        Width = width;
+        Height = height;
     }
 
     public int X { get; set; }
 
     public int Y { get; set; }
 
-    public int ItemID { get; set; }
+    public int Width { get; set; }
 
-    public int Hue { get; set; }
+    public int Height { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.WriteAscii(Hue == 0 ? $"{{ tilepic {X} {Y} {ItemID} }}" : $"{{ tilepichue {X} {Y} {ItemID} {Hue} }}");
+        writer.WriteAscii($"{{ checkertrans {X} {Y} {Width} {Height} }}");
     }
 }

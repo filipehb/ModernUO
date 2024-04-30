@@ -339,7 +339,7 @@ public static class Core
             if (!close)
             {
                 Console.WriteLine("This exception is fatal, press return to exit");
-                Console.ReadLine();
+                ConsoleInputHandler.ReadLine();
             }
 
             Kill();
@@ -565,7 +565,7 @@ public static class Core
 
                 // Handle networking
                 NetState.Slice();
-                PingServer.Slice();
+                // PingServer.Slice();
 
                 // Execute captured post-await methods (like Timer.Pause)
                 LoopContext.ExecuteTasks();

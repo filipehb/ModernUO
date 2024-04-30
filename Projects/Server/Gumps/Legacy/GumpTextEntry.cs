@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpSpriteImage.cs                                              *
+ * File: GumpTextEntry.cs                                                *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,17 +18,17 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpSpriteImage : GumpEntry
+public class GumpTextEntry : GumpEntry
 {
-    public GumpSpriteImage(int x, int y, int gumpID, int width, int height, int sx, int sy)
+    public GumpTextEntry(int x, int y, int width, int height, int hue, int entryID, string initialText)
     {
         X = x;
         Y = y;
-        GumpID = gumpID;
         Width = width;
         Height = height;
-        SX = sx;
-        SY = sy;
+        Hue = hue;
+        EntryID = entryID;
+        InitialText = initialText;
     }
 
     public int X { get; set; }
@@ -39,14 +39,16 @@ public class GumpSpriteImage : GumpEntry
 
     public int Height { get; set; }
 
-    public int GumpID { get; set; }
+    public int Hue { get; set; }
 
-    public int SX { get; set; }
+    public int EntryID { get; set; }
 
-    public int SY { get; set; }
+    public string InitialText { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.WriteAscii($"{{ picinpic {X} {Y} {GumpID} {Width} {Height} {SX} {SY} }}");
+        var textIndex = strings.GetOrAdd(InitialText ?? "");
+        writer.WriteAscii($"{{ textentry {X} {Y} {Width} {Height} {Hue} {EntryID} {textIndex} }}");
+        entries++;
     }
 }

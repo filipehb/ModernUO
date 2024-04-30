@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpImageTiled.cs                                               *
+ * File: GumpTextEntryLimited.cs                                         *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,15 +18,20 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpImageTiled : GumpEntry
+public class GumpTextEntryLimited : GumpEntry
 {
-    public GumpImageTiled(int x, int y, int width, int height, int gumpID)
+    public GumpTextEntryLimited(
+        int x, int y, int width, int height, int hue, int entryID, string initialText, int size = 0
+    )
     {
         X = x;
         Y = y;
         Width = width;
         Height = height;
-        GumpID = gumpID;
+        Hue = hue;
+        EntryID = entryID;
+        InitialText = initialText;
+        Size = size;
     }
 
     public int X { get; set; }
@@ -37,10 +42,18 @@ public class GumpImageTiled : GumpEntry
 
     public int Height { get; set; }
 
-    public int GumpID { get; set; }
+    public int Hue { get; set; }
+
+    public int EntryID { get; set; }
+
+    public string InitialText { get; set; }
+
+    public int Size { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.WriteAscii($"{{ gumppictiled {X} {Y} {Width} {Height} {GumpID} }}");
+        var textIndex = strings.GetOrAdd(InitialText ?? "");
+        writer.WriteAscii($"{{ textentrylimited {X} {Y} {Width} {Height} {Hue} {EntryID} {textIndex} {Size} }}");
+        entries++;
     }
 }

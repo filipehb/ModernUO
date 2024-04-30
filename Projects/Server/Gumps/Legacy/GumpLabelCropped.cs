@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpRadio.cs                                                    *
+ * File: GumpLabelCropped.cs                                             *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,34 +18,33 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpRadio : GumpEntry
+public class GumpLabelCropped : GumpEntry
 {
-    public GumpRadio(int x, int y, int inactiveID, int activeID, bool initialState, int switchID)
+    public GumpLabelCropped(int x, int y, int width, int height, int hue, string text)
     {
         X = x;
         Y = y;
-        InactiveID = inactiveID;
-        ActiveID = activeID;
-        InitialState = initialState;
-        SwitchID = switchID;
+        Width = width;
+        Height = height;
+        Hue = hue;
+        Text = text;
     }
 
     public int X { get; set; }
 
     public int Y { get; set; }
 
-    public int InactiveID { get; set; }
+    public int Width { get; set; }
 
-    public int ActiveID { get; set; }
+    public int Height { get; set; }
 
-    public bool InitialState { get; set; }
+    public int Hue { get; set; }
 
-    public int SwitchID { get; set; }
+    public string Text { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        var initialState = InitialState ? "1" : "0";
-        writer.WriteAscii($"{{ radio {X} {Y} {InactiveID} {ActiveID} {initialState} {SwitchID} }}");
-        switches++;
+        var textIndex = strings.GetOrAdd(Text ?? "");
+        writer.WriteAscii($"{{ croppedtext {X} {Y} {Width} {Height} {Hue} {textIndex} }}");
     }
 }

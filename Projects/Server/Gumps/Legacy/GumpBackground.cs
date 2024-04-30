@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpECHandleInput.cs                                            *
+ * File: GumpBackground.cs                                               *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,12 +18,29 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpECHandleInput : GumpEntry
+public class GumpBackground : GumpEntry
 {
-    private static byte[] _layout = Gump.StringToBuffer("{ echandleinput }");
+    public GumpBackground(int x, int y, int width, int height, int gumpID)
+    {
+        X = x;
+        Y = y;
+        Width = width;
+        Height = height;
+        GumpID = gumpID;
+    }
+
+    public int X { get; set; }
+
+    public int Y { get; set; }
+
+    public int Width { get; set; }
+
+    public int Height { get; set; }
+
+    public int GumpID { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.Write(_layout);
+        writer.WriteAscii($"{{ resizepic {X} {Y} {GumpID} {Width} {Height} }}");
     }
 }

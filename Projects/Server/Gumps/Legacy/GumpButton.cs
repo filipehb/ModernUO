@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpImageTileButton.cs                                          *
+ * File: GumpButton.cs                                                   *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,11 +18,17 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpImageTileButton : GumpEntry
+public enum GumpButtonType
 {
-    public GumpImageTileButton(
-        int x, int y, int normalID, int pressedID, int buttonID, GumpButtonType type, int param,
-        int itemID, int hue, int width, int height
+    Page = 0,
+    Reply = 1
+}
+
+public class GumpButton : GumpEntry
+{
+    public GumpButton(
+        int x, int y, int normalID, int pressedID, int buttonID,
+        GumpButtonType type = GumpButtonType.Reply, int param = 0
     )
     {
         X = x;
@@ -32,11 +38,6 @@ public class GumpImageTileButton : GumpEntry
         ButtonID = buttonID;
         Type = type;
         Param = param;
-
-        ItemID = itemID;
-        Hue = hue;
-        Width = width;
-        Height = height;
     }
 
     public int X { get; set; }
@@ -53,18 +54,8 @@ public class GumpImageTileButton : GumpEntry
 
     public int Param { get; set; }
 
-    public int ItemID { get; set; }
-
-    public int Hue { get; set; }
-
-    public int Width { get; set; }
-
-    public int Height { get; set; }
-
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        writer.WriteAscii(
-            $"{{ buttontileart {X} {Y} {NormalID} {PressedID} {(int)Type} {Param} {ButtonID} {ItemID} {Hue} {Width} {Height} }}"
-        );
+        writer.WriteAscii($"{{ button {X} {Y} {NormalID} {PressedID} {(int)Type} {Param} {ButtonID} }}");
     }
 }

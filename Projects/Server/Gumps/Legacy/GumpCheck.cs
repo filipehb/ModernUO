@@ -1,8 +1,8 @@
 /*************************************************************************
  * ModernUO                                                              *
- * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Copyright 2019-2024 - ModernUO Development Team                       *
  * Email: hi@modernuo.com                                                *
- * File: GumpImage.cs                                                    *
+ * File: GumpCheck.cs                                                    *
  *                                                                       *
  * This program is free software: you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -18,39 +18,34 @@ using Server.Collections;
 
 namespace Server.Gumps;
 
-public class GumpImage : GumpEntry
+public class GumpCheck : GumpEntry
 {
-    public GumpImage(int x, int y, int gumpID, int hue = 0, string cls = null)
+    public GumpCheck(int x, int y, int inactiveID, int activeID, bool initialState, int switchID)
     {
         X = x;
         Y = y;
-        GumpID = gumpID;
-        Hue = hue;
-        Class = cls;
+        InactiveID = inactiveID;
+        ActiveID = activeID;
+        InitialState = initialState;
+        SwitchID = switchID;
     }
 
     public int X { get; set; }
 
     public int Y { get; set; }
 
-    public int GumpID { get; set; }
+    public int InactiveID { get; set; }
 
-    public int Hue { get; set; }
+    public int ActiveID { get; set; }
 
-    public string Class { get; set; }
+    public bool InitialState { get; set; }
+
+    public int SwitchID { get; set; }
 
     public override void AppendTo(ref SpanWriter writer, OrderedHashSet<string> strings, ref int entries, ref int switches)
     {
-        var hasHue = Hue != 0;
-        var hasClass = !string.IsNullOrEmpty(Class);
-        writer.WriteAscii(
-            hasHue switch
-            {
-                true when hasClass  => $"{{ gumppic {X} {Y} {GumpID} hue={Hue} class={Class} }}",
-                true                => $"{{ gumppic {X} {Y} {GumpID} hue={Hue} }}",
-                false when hasClass => $"{{ gumppic {X} {Y} {GumpID} class={Class} }}",
-                false               => $"{{ gumppic {X} {Y} {GumpID} }}",
-            }
-        );
+        var initialState = InitialState ? "1" : "0";
+        writer.WriteAscii($"{{ checkbox {X} {Y} {InactiveID} {ActiveID} {initialState} {SwitchID} }}");
+        switches++;
     }
 }
