@@ -15,7 +15,6 @@ using Server.Network;
 using Server.Prompts;
 using Server.Targeting;
 using Server.Text;
-using Server.Utilities;
 using CalcMoves = Server.Movement.Movement;
 
 namespace Server;
@@ -3273,9 +3272,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
         string suffix = hasTitle switch
         {
-            true when hasGuild  => $" {Title} [{Utility.FixHtmlFormattable(guild.Abbreviation)}]",
+            true when hasGuild  => $" {Title} [{guild.Abbreviation.FixHtmlFormattable()}]",
             true                => $" {Title}",
-            false when hasGuild => $" [{Utility.FixHtmlFormattable(guild.Abbreviation)}]",
+            false when hasGuild => $" [{guild.Abbreviation.FixHtmlFormattable()}]",
             _                   => " "
         };
 
@@ -3291,16 +3290,16 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             {
                 if (NewGuildDisplay)
                 {
-                    list.Add($"{Utility.FixHtmlFormattable(guildTitle)}, {Utility.FixHtmlFormattable(guild.Name)}");
+                    list.Add($"{guildTitle.FixHtmlFormattable()}, {guild.Name.FixHtmlFormattable()}");
                 }
                 else
                 {
-                    list.Add($"{Utility.FixHtmlFormattable(guildTitle)}, {Utility.FixHtmlFormattable(guild.Name)} Guild{type}");
+                    list.Add($"{guildTitle.FixHtmlFormattable()}, {guild.Name.FixHtmlFormattable()} Guild{type}");
                 }
             }
             else
             {
-                list.Add(Utility.FixHtml(guild.Name));
+                list.Add(guild.Name.FixHtml());
             }
         }
     }

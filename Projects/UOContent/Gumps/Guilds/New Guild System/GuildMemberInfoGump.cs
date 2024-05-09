@@ -1,3 +1,4 @@
+using System;
 using Server.Gumps;
 using Server.Mobiles;
 using Server.Network;
@@ -265,7 +266,7 @@ namespace Server.Guilds
                 return;
             }
 
-            var title = Utility.FixHtml(text.Trim());
+            var title = text.AsSpan().Trim().FixHtml();
 
             if (title.Length > 20)
             {

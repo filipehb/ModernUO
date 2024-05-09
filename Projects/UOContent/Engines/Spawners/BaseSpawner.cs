@@ -7,7 +7,6 @@ using Server.Commands;
 using Server.Items;
 using Server.Json;
 using Server.Mobiles;
-using Server.Utilities;
 using static Server.Attributes;
 
 namespace Server.Engines.Spawners;
@@ -884,9 +883,11 @@ public abstract partial class BaseSpawner : Item, ISpawner
     {
         _guid = reader.ReadGuid();
         _returnOnDeactivate = reader.ReadBool();
-        _entries = new List<SpawnerEntry>(reader.ReadInt());
 
-        for (var i = 0; i < _entries.Count; ++i)
+        var count = reader.ReadInt();
+        _entries = new List<SpawnerEntry>(count);
+
+        for (var i = 0; i < count; ++i)
         {
             var entry = new SpawnerEntry(this);
             entry.Deserialize(reader);
