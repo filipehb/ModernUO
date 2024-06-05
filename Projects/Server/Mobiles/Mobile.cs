@@ -490,8 +490,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             if (oldValue != value)
             {
                 m_Hunger = value;
-
-                EventSink.InvokeHungerChanged(this, oldValue);
+                OnHungerChanged(oldValue);
             }
         }
     }
@@ -866,10 +865,12 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         }
     }
 
+    [IgnoreDupe]
     public bool Pushing { get; set; }
 
     public virtual bool IsDeadBondedPet => false;
 
+    [IgnoreDupe]
     public ISpell Spell
     {
         get => m_Spell;
@@ -2257,13 +2258,17 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         AddNameProperties(list);
     }
 
+    [IgnoreDupe]
     [CommandProperty(AccessLevel.GameMaster, readOnly: true)]
     public DateTime Created { get; set; } = Core.Now;
 
+    [IgnoreDupe]
     public long SavePosition { get; set; } = -1;
 
+    [IgnoreDupe]
     public BufferWriter SaveBuffer { get; set; }
 
+    [IgnoreDupe]
     [CommandProperty(AccessLevel.Counselor)]
     public Serial Serial { get; }
 
@@ -3695,6 +3700,14 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
     ///     <seealso cref="Combatant" />
     /// </summary>
     public virtual void OnCombatantChange()
+    {
+    }
+
+    /// <summary>
+    ///     Overridable. Virtual event invoked after the <see cref="Hunger" /> property has changed.
+    ///     <seealso cref="Hunger" />
+    /// </summary>
+    public virtual void OnHungerChanged(int oldValue)
     {
     }
 

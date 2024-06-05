@@ -2,10 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using Server.Accounting;
+using Server.Engines.CannedEvil;
 using Server.Engines.Help;
+using Server.Engines.PlayerMurderSystem;
+using Server.Engines.Virtues;
 using Server.Logging;
 using Server.Network;
 using Server.Regions;
+using Server.Spells.Fifth;
+using Server.Spells.First;
+using Server.Spells.Mysticism;
+using Server.Spells.Necromancy;
+using Server.Spells.Ninjitsu;
+using Server.Spells.Second;
 
 namespace Server.Misc;
 
@@ -64,7 +73,6 @@ public static class AccountHandler
 
     public static void Initialize()
     {
-        EventSink.DeleteRequest += EventSink_DeleteRequest;
         EventSink.AccountLogin += EventSink_AccountLogin;
         EventSink.GameLogin += EventSink_GameLogin;
     }
@@ -182,7 +190,7 @@ public static class AccountHandler
         }
     }
 
-    private static void EventSink_DeleteRequest(NetState state, int index)
+    public static void DeleteRequest(NetState state, int index)
     {
         if (state.Account is not Account acct)
         {
@@ -228,7 +236,20 @@ public static class AccountHandler
 
                 m.Delete();
 
-                EventSink.InvokePlayerDeleted(m);
+                StaminaSystem.OnPlayerDeleted(m);
+                JusticeVirtue.OnPlayerDeleted(m);
+                PlayerMurderSystem.OnPlayerDeleted(m);
+                ChampionTitleSystem.OnPlayerDeleted(m);
+
+                // Spells
+                MagicReflectSpell.EndReflect(m);
+                ReactiveArmorSpell.EndArmor(m);
+                ProtectionSpell.EndProtection(m);
+                StoneFormSpell.RemoveEffects(m);
+                AnimateDeadSpell.RemoveEffects(m);
+                SummonFamiliarSpell.RemoveEffects(m);
+                AnimalForm.RemoveLastAnimalForm(m);
+
                 state.SendCharacterListUpdate(acct);
                 return;
             }
@@ -348,11 +369,6 @@ public static class AccountHandler
 
             acct.LogAccess(e.State);
         }
-
-        if (!e.Accepted)
-        {
-            AccountAttackLimiter.RegisterInvalidAccess(e.State);
-        }
     }
 
     public static void EventSink_GameLogin(GameLoginEventArgs e)
@@ -386,12 +402,7 @@ public static class AccountHandler
             logger.Information("Login: {NetState} Account '{Username}' at character list", e.State, un);
             e.State.Account = acct;
             e.Accepted = true;
-            e.CityInfo = CharacterCreation.GetStartingCities(acct.Young);
-        }
-
-        if (!e.Accepted)
-        {
-            AccountAttackLimiter.RegisterInvalidAccess(e.State);
+            e.CityInfo = CharacterCreation.GetStartingCities();
         }
     }
 
