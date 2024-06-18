@@ -28,12 +28,9 @@ public static class EntityPersistence
         IIndexInfo<I> indexInfo,
         Dictionary<I, T> entities,
         string savePath,
-        ConcurrentQueue<Type> types,
-        out Dictionary<string, int> counts
+        ConcurrentQueue<Type> types
     ) where T : class, ISerializable
     {
-        counts = new Dictionary<string, int>();
-
         var typeName = indexInfo.TypeName;
 
         var path = Path.Combine(savePath, typeName);
@@ -61,12 +58,6 @@ public static class EntityPersistence
             e.SerializeTo(bin);
 
             idx.Write((int)(bin.Position - start));
-
-            var type = e.GetType().FullName;
-            if (type != null)
-            {
-                counts[type] = (counts.TryGetValue(type, out var count) ? count : 0) + 1;
-            }
         }
     }
 
@@ -246,21 +237,19 @@ public static class EntityPersistence
             }
             else
             {
-                Console.WriteLine($"***** Bad deserialize of {t.GetType()} *****");
+                Console.WriteLine($"***** Bad deserialize of {t.GetType()} ({t.Serial}) *****");
                 Console.WriteLine(error);
-
-                ConsoleKey pressedKey;
 
                 if (!deleteAllFailures)
                 {
-                    Console.WriteLine("Delete the object and continue? (y/n/a)");
-                    pressedKey = Console.ReadKey(true).Key;
+                    Console.Write("Delete the object and continue? (y/n/a): ");
+                    var pressedKey = Console.ReadLine();
 
-                    if (pressedKey == ConsoleKey.A)
+                    if (pressedKey.InsensitiveEquals("a"))
                     {
                         deleteAllFailures = true;
                     }
-                    else if (pressedKey != ConsoleKey.Y)
+                    else if (!pressedKey.InsensitiveEquals("y"))
                     {
                         throw new Exception("Deserialization failed.");
                     }
@@ -279,9 +268,9 @@ public static class EntityPersistence
 
             var issue = t?.IsAbstract == true ? "marked abstract" : "not found";
 
-            Console.WriteLine($"Error: Type '{typeName}' was {issue}. Delete all of those types? (y/n)");
+            Console.Write($"Error: Type '{typeName}' was {issue}. Delete all of those types? (y/n): ");
 
-            if (Console.ReadKey(true).Key == ConsoleKey.Y)
+            if (Console.ReadLine().InsensitiveEquals("y"))
             {
                 Console.WriteLine("Loading...");
                 return null;

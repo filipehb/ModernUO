@@ -4,7 +4,6 @@ using ModernUO.Serialization;
 using Server.ContextMenus;
 using Server.Engines.Craft;
 using Server.Network;
-using Server.Utilities;
 
 namespace Server.Items;
 
@@ -251,7 +250,7 @@ public partial class SalvageBag : Bag
         var salvaged = 0;
         var notSalvaged = 0;
 
-        foreach (var item in EnumerateItemsByType<Item>())
+        foreach (var item in EnumerateItems())
         {
             if (item is not IScissorable scissorable)
             {

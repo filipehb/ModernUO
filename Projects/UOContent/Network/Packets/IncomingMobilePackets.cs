@@ -15,6 +15,7 @@
 
 using System.Buffers;
 using Server.Items;
+using Server.Misc;
 
 namespace Server.Network;
 
@@ -28,18 +29,18 @@ public static class IncomingMobilePackets
         IncomingPackets.Register(0x6F, 0, true, &SecureTrade);
     }
 
-    public static void RenameRequest(NetState state, SpanReader reader, int packetLength)
+    public static void RenameRequest(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
         var targ = World.FindMobile((Serial)reader.ReadUInt32());
 
         if (targ != null)
         {
-            EventSink.InvokeRenameRequest(from, targ, reader.ReadAsciiSafe());
+            RenameRequests.RenameRequest(from, targ, reader.ReadAsciiSafe());
         }
     }
 
-    public static void MobileNameRequest(NetState state, SpanReader reader, int packetLength)
+    public static void MobileNameRequest(NetState state, SpanReader reader)
     {
         var m = World.FindMobile((Serial)reader.ReadUInt32());
 
@@ -49,7 +50,7 @@ public static class IncomingMobilePackets
         }
     }
 
-    public static void ProfileReq(NetState state, SpanReader reader, int packetLength)
+    public static void ProfileReq(NetState state, SpanReader reader)
     {
         int type = reader.ReadByte();
         var serial = (Serial)reader.ReadUInt32();
@@ -66,7 +67,7 @@ public static class IncomingMobilePackets
         {
             case 0x00: // display request
                 {
-                    EventSink.InvokeProfileRequest(beholder, beheld);
+                    Profile.ProfileRequest(beholder, beheld);
 
                     break;
                 }
@@ -82,14 +83,14 @@ public static class IncomingMobilePackets
 
                     var text = reader.ReadBigUni(length);
 
-                    EventSink.InvokeChangeProfileRequest(beholder, beheld, text);
+                    Profile.ChangeProfileRequest(beholder, beheld, text);
 
                     break;
                 }
         }
     }
 
-    public static void SecureTrade(NetState state, SpanReader reader, int packetLength)
+    public static void SecureTrade(NetState state, SpanReader reader)
     {
         switch (reader.ReadByte())
         {

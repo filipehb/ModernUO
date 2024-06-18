@@ -19,7 +19,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.Toolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
 using Server;
 using Server.Buffers;
 using Server.Text;
@@ -438,7 +438,7 @@ public ref struct SpanWriter
             _                  => offset // Begin
         });
 
-        if (newPosition >= _buffer.Length)
+        if (newPosition > _buffer.Length)
         {
             Grow(newPosition - _buffer.Length + 1);
         }

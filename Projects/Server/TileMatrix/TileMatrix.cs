@@ -13,17 +13,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
  *************************************************************************/
 
+using Server.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Server.Logging;
 
 namespace Server;
 
 public class TileMatrix
 {
+    public const int SectorShift = 3;
+
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(TileMatrix));
     private static readonly List<TileMatrix> _instances = new();
 
@@ -31,7 +33,7 @@ public class TileMatrix
     private readonly LandTile[][][] _landTiles;
     private readonly LandTile[] _invalidLandBlock;
     private readonly StaticTile[][][] _emptyStaticBlock;
-    private readonly UOPIndex _mapIndex;
+    private readonly UOPEntry[] _uopMapEntries;
     private readonly int _fileIndex;
     private readonly Map _map;
     private readonly int[][] _staticPatches;
@@ -80,8 +82,8 @@ public class TileMatrix
         }
 
         _fileIndex = fileIndex;
-        BlockWidth = width >> 3;
-        BlockHeight = height >> 3;
+        BlockWidth = width >> SectorShift;
+        BlockHeight = height >> SectorShift;
 
         _map = owner;
 
@@ -102,7 +104,13 @@ public class TileMatrix
                 if (mapPath != null)
                 {
                     MapStream = new FileStream(mapPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    _mapIndex = new UOPIndex(MapStream);
+
+                    var uopEntries = UOPFiles.ReadUOPIndexes(MapStream, ".dat", 0x14000, 5);
+
+                    _uopMapEntries = GC.AllocateUninitializedArray<UOPEntry>(uopEntries.Count);
+                    uopEntries.Values.CopyTo(_uopMapEntries, 0);
+
+                    ConvertToMapEntries(MapStream);
                 }
                 else
                 {
@@ -158,7 +166,6 @@ public class TileMatrix
 
     public StaticTile[][][] EmptyStaticBlock => _emptyStaticBlock;
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public void SetStaticBlock(int x, int y, StaticTile[][][] value)
     {
         if (x < 0 || y < 0 || x >= BlockWidth || y >= BlockHeight)
@@ -173,7 +180,6 @@ public class TileMatrix
         _staticPatches[x][y >> 5] |= 1 << (y & 0x1F);
     }
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public StaticTile[][][] GetStaticBlock(int x, int y)
     {
         if (x < 0 || y < 0 || x >= BlockWidth || y >= BlockHeight || DataStream == null || IndexStream == null)
@@ -187,31 +193,28 @@ public class TileMatrix
 
         if (tiles == null)
         {
-            lock (_fileShare)
+            for (var i = 0; tiles == null && i < _fileShare.Count; ++i)
             {
-                for (var i = 0; tiles == null && i < _fileShare.Count; ++i)
+                var shared = _fileShare[i];
+
+                lock (shared)
                 {
-                    var shared = _fileShare[i];
-
-                    lock (shared)
+                    if (x < shared.BlockWidth && y < shared.BlockHeight)
                     {
-                        if (x < shared.BlockWidth && y < shared.BlockHeight)
+                        var theirTiles = shared._staticTiles[x];
+
+                        if (theirTiles != null)
                         {
-                            var theirTiles = shared._staticTiles[x];
+                            tiles = theirTiles[y];
+                        }
 
-                            if (theirTiles != null)
+                        if (tiles != null)
+                        {
+                            var theirBits = shared._staticPatches[x];
+
+                            if (theirBits != null && (theirBits[y >> 5] & (1 << (y & 0x1F))) != 0)
                             {
-                                tiles = theirTiles[y];
-                            }
-
-                            if (tiles != null)
-                            {
-                                var theirBits = shared._staticPatches[x];
-
-                                if (theirBits != null && (theirBits[y >> 5] & (1 << (y & 0x1F))) != 0)
-                                {
-                                    tiles = null;
-                                }
+                                tiles = null;
                             }
                         }
                     }
@@ -226,44 +229,15 @@ public class TileMatrix
         return tiles;
     }
 
-    public StaticTile[] GetStaticTiles(int x, int y)
-    {
-        var tiles = GetStaticBlock(x >> 3, y >> 3);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.StaticTileEnumerable GetStaticTiles(int x, int y) => new(_map, new Point2D(x, y), includeMultis: false);
 
-        return tiles[x & 0x7][y & 0x7];
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.StaticTileEnumerable GetStaticAndMultiTiles(int x, int y) => new(_map, new Point2D(x, y));
 
-    private readonly TileList m_TilesList = new();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Map.StaticTileEnumerable GetMultiTiles(int x, int y) => new(_map, new Point2D(x, y), false);
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
-    public StaticTile[] GetStaticTiles(int x, int y, bool multis)
-    {
-        var tiles = GetStaticBlock(x >> 3, y >> 3);
-
-        if (!multis)
-        {
-            return tiles[x & 0x7][y & 0x7];
-        }
-
-        var any = false;
-
-        foreach (var multiTiles in _map.GetMultiTilesAt(x, y))
-        {
-            any = true;
-            m_TilesList.AddRange(multiTiles);
-        }
-
-        if (!any)
-        {
-            return tiles[x & 0x7][y & 0x7];
-        }
-
-        m_TilesList.AddRange(tiles[x & 0x7][y & 0x7]);
-
-        return m_TilesList.ToArray();
-    }
-
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public void SetLandBlock(int x, int y, LandTile[] value)
     {
         if (x < 0 || y < 0 || x >= BlockWidth || y >= BlockHeight)
@@ -278,7 +252,6 @@ public class TileMatrix
         _landPatches[x][y >> 5] |= 1 << (y & 0x1F);
     }
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public LandTile[] GetLandBlock(int x, int y)
     {
         if (x < 0 || y < 0 || x >= BlockWidth || y >= BlockHeight || MapStream == null)
@@ -295,32 +268,26 @@ public class TileMatrix
             return tiles;
         }
 
-        lock (_fileShare)
+        for (var i = 0; tiles == null && i < _fileShare.Count; ++i)
         {
-            for (var i = 0; tiles == null && i < _fileShare.Count; ++i)
+            var shared = _fileShare[i];
+
+            if (x < shared.BlockWidth && y < shared.BlockHeight)
             {
-                var shared = _fileShare[i];
+                var theirTiles = shared._landTiles[x];
 
-                lock (shared)
+                if (theirTiles != null)
                 {
-                    if (x < shared.BlockWidth && y < shared.BlockHeight)
+                    tiles = theirTiles[y];
+                }
+
+                if (tiles != null)
+                {
+                    var theirBits = shared._landPatches[x];
+
+                    if (theirBits != null && (theirBits[y >> 5] & (1 << (y & 0x1F))) != 0)
                     {
-                        var theirTiles = shared._landTiles[x];
-
-                        if (theirTiles != null)
-                        {
-                            tiles = theirTiles[y];
-                        }
-
-                        if (tiles != null)
-                        {
-                            var theirBits = shared._landPatches[x];
-
-                            if (theirBits != null && (theirBits[y >> 5] & (1 << (y & 0x1F))) != 0)
-                            {
-                                tiles = null;
-                            }
-                        }
+                        tiles = null;
                     }
                 }
             }
@@ -335,7 +302,7 @@ public class TileMatrix
 
     public LandTile GetLandTile(int x, int y)
     {
-        var tiles = GetLandBlock(x >> 3, y >> 3);
+        var tiles = GetLandBlock(x >> SectorShift, y >> SectorShift);
 
         return tiles[((y & 0x7) << 3) + (x & 0x7)];
     }
@@ -344,7 +311,6 @@ public class TileMatrix
 
     private StaticTile[] m_TileBuffer = new StaticTile[128];
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     private unsafe StaticTile[][][] ReadStaticBlock(int x, int y)
     {
         try
@@ -430,7 +396,7 @@ public class TileMatrix
     private DateTime m_NextStaticWarning;
     private DateTime m_NextLandWarning;
 
-    public void Force()
+    public static void Force()
     {
         if (AssemblyHandler.Assemblies?.Length > 0)
         {
@@ -440,16 +406,15 @@ public class TileMatrix
         throw new Exception("No assemblies were loaded, therefore we cannot load TileMatrix.");
     }
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     private unsafe LandTile[] ReadLandBlock(int x, int y)
     {
         try
         {
-            var offset = (x * BlockHeight + y) * 196 + 4;
+            long offset = (x * BlockHeight + y) * 196 + 4;
 
-            if (_mapIndex != null)
+            if (_uopMapEntries != null)
             {
-                offset = _mapIndex.Lookup(offset);
+                offset = FindOffset(offset);
             }
 
             MapStream.Seek(offset, SeekOrigin.Begin);
@@ -475,9 +440,45 @@ public class TileMatrix
         }
     }
 
+    public long FindOffset(long offset)
+    {
+        var total = 0;
+
+        for (var i = 0; i < _uopMapEntries.Length; ++i)
+        {
+            var entry = _uopMapEntries[i];
+            var newTotal = total + entry.Size;
+
+            if (offset < newTotal)
+            {
+                return entry.Offset + (offset - total);
+            }
+
+            total = newTotal;
+        }
+
+        return -1;
+    }
+
+    private void ConvertToMapEntries(FileStream stream)
+    {
+        // Sorting by offset to make seeking faster
+        Array.Sort(_uopMapEntries, (a, b) => a.Offset.CompareTo(b.Offset));
+
+        var reader = new BinaryReader(stream);
+
+        for (var i = 0; i < _uopMapEntries.Length; ++i)
+        {
+            var entry = _uopMapEntries[i];
+            stream.Seek(entry.Offset, SeekOrigin.Begin);
+            _uopMapEntries[i].Extra = reader.ReadInt32(); // order
+        }
+
+        Array.Sort(_uopMapEntries, (a, b) => a.Extra.CompareTo(b.Extra));
+    }
+
     public void Dispose()
     {
-        _mapIndex?.Close();
         MapStream?.Close();
         DataStream?.Close();
         IndexReader?.Close();
@@ -564,124 +565,5 @@ public struct StaticTile
         m_Y = y;
         m_Z = z;
         m_Hue = hue;
-    }
-}
-
-public class UOPIndex
-{
-    private class UOPEntry : IComparable<UOPEntry>
-    {
-        public int m_Offset;
-        public readonly int m_Length;
-        public int m_Order;
-
-        public UOPEntry(int offset, int length)
-        {
-            m_Offset = offset;
-            m_Length = length;
-            m_Order = 0;
-        }
-
-        public int CompareTo(UOPEntry other)
-        {
-            return m_Order.CompareTo(other.m_Order);
-        }
-    }
-
-    private class OffsetComparer : IComparer<UOPEntry>
-    {
-        public static readonly IComparer<UOPEntry> Instance = new OffsetComparer();
-
-        public int Compare(UOPEntry x, UOPEntry y) => x!.m_Offset.CompareTo(y!.m_Offset);
-    }
-
-    private readonly BinaryReader m_Reader;
-    private readonly int m_Length;
-    private readonly UOPEntry[] m_Entries;
-
-    public int Version { get; }
-
-    public UOPIndex(FileStream stream)
-    {
-        m_Reader = new BinaryReader(stream);
-        m_Length = (int)stream.Length;
-
-        if (m_Reader.ReadInt32() != 0x50594D)
-        {
-            throw new ArgumentException("Invalid UOP file.");
-        }
-
-        Version = m_Reader.ReadInt32();
-        m_Reader.ReadInt32();
-        var nextTable = m_Reader.ReadInt32();
-
-        var entries = new List<UOPEntry>();
-
-        do
-        {
-            stream.Seek(nextTable, SeekOrigin.Begin);
-            var count = m_Reader.ReadInt32();
-            nextTable = m_Reader.ReadInt32();
-            m_Reader.ReadInt32();
-
-            for (var i = 0; i < count; ++i)
-            {
-                var offset = m_Reader.ReadInt32();
-
-                if (offset == 0)
-                {
-                    stream.Seek(30, SeekOrigin.Current);
-                    continue;
-                }
-
-                m_Reader.ReadInt64();
-                var length = m_Reader.ReadInt32();
-
-                entries.Add(new UOPEntry(offset, length));
-
-                stream.Seek(18, SeekOrigin.Current);
-            }
-        }
-        while (nextTable != 0 && nextTable < m_Length);
-
-        entries.Sort(OffsetComparer.Instance);
-
-        for (var i = 0; i < entries.Count; ++i)
-        {
-            stream.Seek(entries[i].m_Offset + 2, SeekOrigin.Begin);
-
-            int dataOffset = m_Reader.ReadInt16();
-            entries[i].m_Offset += 4 + dataOffset;
-
-            stream.Seek(dataOffset, SeekOrigin.Current);
-            entries[i].m_Order = m_Reader.ReadInt32();
-        }
-
-        entries.Sort();
-        m_Entries = entries.ToArray();
-    }
-
-    public int Lookup(int offset)
-    {
-        var total = 0;
-
-        for (var i = 0; i < m_Entries.Length; ++i)
-        {
-            var newTotal = total + m_Entries[i].m_Length;
-
-            if (offset < newTotal)
-            {
-                return m_Entries[i].m_Offset + (offset - total);
-            }
-
-            total = newTotal;
-        }
-
-        return m_Length;
-    }
-
-    public void Close()
-    {
-        m_Reader.Close();
     }
 }

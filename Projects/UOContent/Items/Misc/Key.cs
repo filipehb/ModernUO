@@ -97,7 +97,7 @@ public partial class Key : Item
             return false;
         }
 
-        foreach (var item in cont.EnumerateItems())
+        foreach (var item in cont.FindItems())
         {
             if (item is Key key)
             {
@@ -234,7 +234,7 @@ public partial class Key : Item
                 return;
             }
 
-            _key.Description = Utility.FixHtml(text);
+            _key.Description = text.FixHtml();
         }
     }
 

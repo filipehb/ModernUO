@@ -1,8 +1,25 @@
+/*************************************************************************
+ * ModernUO                                                              *
+ * Copyright 2019-2023 - ModernUO Development Team                       *
+ * Email: hi@modernuo.com                                                *
+ * File: MultiData.cs                                                    *
+ *                                                                       *
+ * This program is free software: you can redistribute it and/or modify  *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation, either version 3 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
+ *************************************************************************/
+
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using Server.Buffers;
+using Server.Compression;
 
 namespace Server;
 
@@ -27,7 +44,7 @@ public static class MultiData
         LoadMul(postHSMulFormat);
     }
 
-    private static Dictionary<int, MultiComponentList> _components = new();
+    private static readonly Dictionary<int, MultiComponentList> _components = new();
 
     public static MultiComponentList GetComponents(int multiID) =>
         _components.TryGetValue(multiID & 0x3FFF, out var mcl) ? mcl : MultiComponentList.Empty;
@@ -35,114 +52,74 @@ public static class MultiData
     private static void LoadUOP(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var streamReader = new BinaryReader(stream);
 
-        // Head Information Start
-        if (streamReader.ReadInt32() != 0x0050594D) // Not a UOP File
+        // TODO: Find out if housing.bin is needed and read that.
+        var uopEntries = UOPFiles.ReadUOPIndexes(stream, ".bin", 0x10000, 4, 6);
+
+        byte[] compressionBuffer = STArrayPool<byte>.Shared.Rent(0x10000);
+        var buffer = STArrayPool<byte>.Shared.Rent(0x10000);
+
+        foreach (var (i, entry) in uopEntries)
         {
-            return;
-        }
+            stream.Seek(entry.Offset, SeekOrigin.Begin);
 
-        if (streamReader.ReadInt32() > 5) // Bad Version
-        {
-            return;
-        }
+            Span<byte> data;
 
-        UOPHash.BuildChunkIDs(out var chunkIds);
-
-        streamReader.ReadUInt32(); // format timestamp? 0xFD23EC43
-        var startAddress = streamReader.ReadInt64();
-
-        stream.Seek(startAddress, SeekOrigin.Begin); // End of head block
-
-        long nextBlock;
-
-        do
-        {
-            var blockFileCount = streamReader.ReadInt32();
-            nextBlock = streamReader.ReadInt64();
-
-            var index = 0;
-
-            do
+            if (entry.Compressed)
             {
-                var offset = streamReader.ReadInt64();
-
-                var headerSize = streamReader.ReadInt32();       // header length
-                var compressedSize = streamReader.ReadInt32();   // compressed size
-                var decompressedSize = streamReader.ReadInt32(); // decompressed size
-
-                var filehash = streamReader.ReadUInt64(); // filename hash (HashLittle2)
-                streamReader.ReadUInt32();
-                var compressionMethod = streamReader.ReadInt16(); // compression method (0 = none, 1 = zlib)
-
-                index++;
-
-                if (offset == 0 || decompressedSize == 0 || filehash == 0x126D1E99DDEDEE0A) // Exclude housing.bin
+                if (stream.Read(buffer.AsSpan( 0, entry.CompressedSize)) != entry.CompressedSize)
                 {
-                    continue;
+                    throw new FileLoadException($"Error loading file {stream.Name}.");
                 }
 
-                chunkIds.TryGetValue(filehash, out var chunkID);
-
-                var position = stream.Position; // save current position
-
-                stream.Seek(offset + headerSize, SeekOrigin.Begin);
-
-                Span<byte> sourceData = GC.AllocateUninitializedArray<byte>(compressedSize);
-
-                if (stream.Read(sourceData) != compressedSize)
+                var decompressedSize = entry.Size;
+                if (Deflate.Standard.Unpack(compressionBuffer, buffer, out var bytesDecompressed) != LibDeflateResult.Success
+                    || decompressedSize != bytesDecompressed)
                 {
-                    continue;
+                    throw new FileLoadException($"Error loading file {stream.Name}. Failed to unpack entry {i}.");
                 }
 
-                Span<byte> data;
+                data = compressionBuffer.AsSpan(0, decompressedSize);
+            }
+            else
+            {
+                data = buffer.AsSpan(0, entry.Size);
+            }
 
-                if (compressionMethod == 1)
+            var tileList = new List<MultiTileEntry>();
+
+            var reader = new SpanReader(data);
+
+            reader.Seek(4, SeekOrigin.Begin); // Skip the first 4 bytes
+            var count = reader.ReadUInt32LE();
+
+            for (uint t = 0; t < count; t++)
+            {
+                var itemId = reader.ReadUInt16LE();
+                var x = reader.ReadInt16LE();
+                var y = reader.ReadInt16LE();
+                var z = reader.ReadInt16LE();
+                var flagValue = reader.ReadUInt16LE();
+
+                var tileFlag = flagValue switch
                 {
-                    data = GC.AllocateUninitializedArray<byte>(decompressedSize);
-                    Zlib.Unpack(data, ref decompressedSize, sourceData, compressedSize);
-                }
-                else
-                {
-                    data = sourceData;
-                }
+                    1   => TileFlag.None,
+                    257 => TileFlag.Generic,
+                    _   => TileFlag.Background // 0
+                };
 
-                var tileList = new List<MultiTileEntry>();
+                var clilocsCount = reader.ReadUInt32LE();
+                var skip = (int)Math.Min(clilocsCount, int.MaxValue) * 4; // bypass binary block
+                reader.Seek(skip, SeekOrigin.Current);
 
-                var reader = new SpanReader(data);
-                reader.Seek(4, SeekOrigin.Begin);
-                var count = reader.ReadUInt32LE();
+                tileList.Add(new MultiTileEntry(itemId, x, y, z, tileFlag));
+            }
 
-                for (uint i = 0; i < count; i++)
-                {
-                    var itemId = reader.ReadUInt16LE();
-                    var x = reader.ReadInt16LE();
-                    var y = reader.ReadInt16LE();
-                    var z = reader.ReadInt16LE();
-                    var flagValue = reader.ReadUInt16LE();
+            _components[i] = new MultiComponentList(tileList);
+        }
 
-                    var tileFlag = flagValue switch
-                    {
-                        1   => TileFlag.None,
-                        257 => TileFlag.Generic,
-                        _   => TileFlag.Background // 0
-                    };
-
-                    var clilocsCount = reader.ReadUInt32LE();
-                    var skip = (int)Math.Min(clilocsCount, int.MaxValue) * 4; // bypass binary block
-                    reader.Seek(skip, SeekOrigin.Current);
-
-                    tileList.Add(new MultiTileEntry(itemId, x, y, z, tileFlag));
-                }
-
-                _components[chunkID] = new MultiComponentList(tileList);
-
-                stream.Seek(position, SeekOrigin.Begin); // back to position
-            } while (index < blockFileCount);
-        } while (stream.Seek(nextBlock, SeekOrigin.Begin) != 0);
-
-        streamReader.Close();
+        STArrayPool<byte>.Shared.Return(buffer);
+        STArrayPool<byte>.Shared.Return(compressionBuffer);
     }
 
     private static void LoadMul(bool postHSMulFormat)
@@ -508,13 +485,9 @@ public sealed class MultiComponentList
             oldTiles = Tiles[vx][vy];
 
             var newTiles = new StaticTile[oldTiles.Length + 1];
+            Array.Copy(oldTiles, newTiles, oldTiles.Length);
 
-            for (var i = 0; i < oldTiles.Length; ++i)
-            {
-                newTiles[i] = oldTiles[i];
-            }
-
-            newTiles[oldTiles.Length] = new StaticTile((ushort)itemID, (sbyte)z);
+            newTiles[^1] = new StaticTile((ushort)itemID, (sbyte)z);
 
             Tiles[vx][vy] = newTiles;
 
@@ -574,16 +547,8 @@ public sealed class MultiComponentList
                 if (tile.Z == z && tile.Height >= minHeight)
                 {
                     var newTiles = new StaticTile[oldTiles.Length - 1];
-
-                    for (var j = 0; j < i; ++j)
-                    {
-                        newTiles[j] = oldTiles[j];
-                    }
-
-                    for (var j = i + 1; j < oldTiles.Length; ++j)
-                    {
-                        newTiles[j - 1] = oldTiles[j];
-                    }
+                    Array.Copy(oldTiles, newTiles, i);
+                    Array.Copy(oldTiles, i + 1, newTiles, i, oldTiles.Length - i - 1);
 
                     Tiles[vx][vy] = newTiles;
 
@@ -601,16 +566,8 @@ public sealed class MultiComponentList
                     TileData.ItemTable[tile.ItemId & TileData.MaxItemValue].Height >= minHeight)
                 {
                     var newList = new MultiTileEntry[oldList.Length - 1];
-
-                    for (var j = 0; j < i; ++j)
-                    {
-                        newList[j] = oldList[j];
-                    }
-
-                    for (var j = i + 1; j < oldList.Length; ++j)
-                    {
-                        newList[j - 1] = oldList[j];
-                    }
+                    Array.Copy(oldList, newList, i);
+                    Array.Copy(oldList, i + 1, newList, i, oldList.Length - i - 1);
 
                     List = newList;
 
@@ -636,16 +593,8 @@ public sealed class MultiComponentList
                 if (tile.ID == itemID && tile.Z == z)
                 {
                     var newTiles = new StaticTile[oldTiles.Length - 1];
-
-                    for (var j = 0; j < i; ++j)
-                    {
-                        newTiles[j] = oldTiles[j];
-                    }
-
-                    for (var j = i + 1; j < oldTiles.Length; ++j)
-                    {
-                        newTiles[j - 1] = oldTiles[j];
-                    }
+                    Array.Copy(oldTiles, newTiles, i);
+                    Array.Copy(oldTiles, i + 1, newTiles, i, oldTiles.Length - i - 1);
 
                     Tiles[vx][vy] = newTiles;
 
@@ -663,16 +612,8 @@ public sealed class MultiComponentList
                     tile.OffsetZ == (short)z)
                 {
                     var newList = new MultiTileEntry[oldList.Length - 1];
-
-                    for (var j = 0; j < i; ++j)
-                    {
-                        newList[j] = oldList[j];
-                    }
-
-                    for (var j = i + 1; j < oldList.Length; ++j)
-                    {
-                        newList[j - 1] = oldList[j];
-                    }
+                    Array.Copy(oldList, newList, i);
+                    Array.Copy(oldList, i + 1, newList, i, oldList.Length - i - 1);
 
                     List = newList;
 
@@ -788,152 +729,5 @@ public sealed class MultiComponentList
             writer.Write(ent.OffsetZ);
             writer.Write((int)ent.Flags);
         }
-    }
-}
-
-public static class UOPHash
-{
-    public static void BuildChunkIDs(out Dictionary<ulong, int> chunkIds)
-    {
-        const int maxId = 0x10000;
-
-        chunkIds = new Dictionary<ulong, int>();
-
-        for (var i = 0; i < maxId; ++i)
-        {
-            chunkIds[HashLittle2($"build/multicollection/{i:000000}.bin")] = i;
-        }
-    }
-
-    public static ulong HashLittle2(ReadOnlySpan<char> s)
-    {
-        var length = s.Length;
-
-        uint b, c;
-        var a = b = c = 0xDEADBEEF + (uint)length;
-
-        var k = 0;
-
-        while (length > 12)
-        {
-            a += s[k];
-            a += (uint)s[k + 1] << 8;
-            a += (uint)s[k + 2] << 16;
-            a += (uint)s[k + 3] << 24;
-            b += s[k + 4];
-            b += (uint)s[k + 5] << 8;
-            b += (uint)s[k + 6] << 16;
-            b += (uint)s[k + 7] << 24;
-            c += s[k + 8];
-            c += (uint)s[k + 9] << 8;
-            c += (uint)s[k + 10] << 16;
-            c += (uint)s[k + 11] << 24;
-
-            a -= c;
-            a ^= (c << 4) | (c >> 28);
-            c += b;
-            b -= a;
-            b ^= (a << 6) | (a >> 26);
-            a += c;
-            c -= b;
-            c ^= (b << 8) | (b >> 24);
-            b += a;
-            a -= c;
-            a ^= (c << 16) | (c >> 16);
-            c += b;
-            b -= a;
-            b ^= (a << 19) | (a >> 13);
-            a += c;
-            c -= b;
-            c ^= (b << 4) | (b >> 28);
-            b += a;
-
-            length -= 12;
-            k += 12;
-        }
-
-        if (length != 0)
-        {
-            switch (length)
-            {
-                case 12:
-                    {
-                        c += (uint)s[k + 11] << 24;
-                        goto case 11;
-                    }
-                case 11:
-                    {
-                        c += (uint)s[k + 10] << 16;
-                        goto case 10;
-                    }
-                case 10:
-                    {
-                        c += (uint)s[k + 9] << 8;
-                        goto case 9;
-                    }
-                case 9:
-                    {
-                        c += s[k + 8];
-                        goto case 8;
-                    }
-                case 8:
-                    {
-                        b += (uint)s[k + 7] << 24;
-                        goto case 7;
-                    }
-                case 7:
-                    {
-                        b += (uint)s[k + 6] << 16;
-                        goto case 6;
-                    }
-                case 6:
-                    {
-                        b += (uint)s[k + 5] << 8;
-                        goto case 5;
-                    }
-                case 5:
-                    {
-                        b += s[k + 4];
-                        goto case 4;
-                    }
-                case 4:
-                    {
-                        a += (uint)s[k + 3] << 24;
-                        goto case 3;
-                    }
-                case 3:
-                    {
-                        a += (uint)s[k + 2] << 16;
-                        goto case 2;
-                    }
-                case 2:
-                    {
-                        a += (uint)s[k + 1] << 8;
-                        goto case 1;
-                    }
-                case 1:
-                    {
-                        a += s[k];
-                        break;
-                    }
-            }
-
-            c ^= b;
-            c -= (b << 14) | (b >> 18);
-            a ^= c;
-            a -= (c << 11) | (c >> 21);
-            b ^= a;
-            b -= (a << 25) | (a >> 7);
-            c ^= b;
-            c -= (b << 16) | (b >> 16);
-            a ^= c;
-            a -= (c << 4) | (c >> 28);
-            b ^= a;
-            b -= (a << 14) | (a >> 18);
-            c ^= b;
-            c -= (b << 24) | (b >> 8);
-        }
-
-        return ((ulong)b << 32) | c;
     }
 }

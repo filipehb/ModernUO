@@ -21,11 +21,20 @@ public unsafe class PacketHandler
 {
     private readonly int _length;
 
-    public PacketHandler(int packetID, int length, bool ingame, delegate*<NetState, SpanReader, int, void> onReceive)
+    public PacketHandler(
+        int packetID, delegate*<NetState, SpanReader, void> onReceive,
+        int length = 0, bool inGameOnly = false, bool outGameOnly = false
+    ) : this(packetID, length, inGameOnly, outGameOnly, onReceive)
+    {
+
+    }
+
+    public PacketHandler(int packetID, int length, bool inGameOnly, bool outGameOnly, delegate*<NetState, SpanReader, void> onReceive)
     {
         _length = length;
         PacketID = packetID;
-        Ingame = ingame;
+        InGameOnly = inGameOnly;
+        OutOfGameOnly = outGameOnly;
         OnReceive = onReceive;
     }
 
@@ -33,9 +42,11 @@ public unsafe class PacketHandler
 
     public virtual int GetLength(NetState ns) => _length;
 
-    public delegate*<NetState, SpanReader, int, void> OnReceive { get; }
+    public delegate*<NetState, SpanReader, void> OnReceive { get; }
 
-    public delegate*<int, NetState, out bool, bool> ThrottleCallback { get; set; }
+    public delegate*<int, NetState, bool> ThrottleCallback { get; set; }
 
-    public bool Ingame { get; }
+    public bool InGameOnly { get; }
+
+    public bool OutOfGameOnly { get; }
 }

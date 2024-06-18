@@ -26,7 +26,7 @@ public static class IncomingTargetingPackets
         IncomingPackets.Register(0x6C, 19, true, &TargetResponse);
     }
 
-    public static void TargetResponse(NetState state, SpanReader reader, int packetLength)
+    public static void TargetResponse(NetState state, SpanReader reader)
     {
         int type = reader.ReadByte();
         var targetID = reader.ReadInt32();
@@ -83,10 +83,6 @@ public static class IncomingTargetingPackets
                         }
                         else
                         {
-                            var tiles = map.Tiles.GetStaticTiles(x, y, !t.DisallowMultis);
-
-                            var valid = false;
-
                             if (state.HighSeas)
                             {
                                 var id = TileData.ItemTable[graphic & TileData.MaxItemValue];
@@ -97,14 +93,19 @@ public static class IncomingTargetingPackets
                             }
 
                             int hue = 0;
+                            var valid = false;
 
-                            for (var i = 0; !valid && i < tiles.Length; ++i)
+                            var eable = t.DisallowMultis
+                                ? map.Tiles.GetStaticTiles(x, y)
+                                : map.Tiles.GetStaticAndMultiTiles(x, y);
+
+                            foreach (var tile in eable)
                             {
-                                var tile = tiles[i];
                                 if (tile.Z == z && tile.ID == graphic)
                                 {
                                     valid = true;
                                     hue = tile.Hue;
+                                    break;
                                 }
                             }
 

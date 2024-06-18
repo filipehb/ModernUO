@@ -5,7 +5,6 @@ using Server.Factions;
 using Server.Items;
 using Server.Logging;
 using Server.Mobiles;
-using Server.Utilities;
 
 namespace Server.Engines.Craft
 {
@@ -402,12 +401,10 @@ namespace Server.Engines.Craft
                     var vx = from.X + x;
                     var vy = from.Y + y;
 
-                    var tiles = map.Tiles.GetStaticTiles(vx, vy, true);
-
-                    for (var i = 0; i < tiles.Length; ++i)
+                    foreach (var tile in map.Tiles.GetStaticAndMultiTiles(vx, vy))
                     {
-                        var z = tiles[i].Z;
-                        var id = tiles[i].ID;
+                        var z = tile.Z;
+                        var id = tile.ID;
 
                         if (z + 16 > from.Z && from.Z + 16 > z && Find(id, itemIDs))
                         {
@@ -551,7 +548,7 @@ namespace Server.Engines.Craft
                 {
                     amount += item.Amount;
                 }
-                else if ((hq as BaseBeverage)?.Content == RequiredBeverage)
+                else if (hq is not BaseBeverage bev || bev.Content == RequiredBeverage)
                 {
                     amount += hq.Quantity;
                 }
@@ -563,8 +560,7 @@ namespace Server.Engines.Craft
         public bool ConsumeRes(
             Mobile from, Type typeRes, CraftSystem craftSystem, ref int resHue, ref int maxAmount,
             ConsumeType consumeType, ref TextDefinition message
-        ) =>
-            ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, consumeType, ref message, false);
+        ) => ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, consumeType, ref message, false);
 
         public bool ConsumeRes(
             Mobile from, Type typeRes, CraftSystem craftSystem, ref int resHue, ref int maxAmount,
@@ -632,7 +628,7 @@ namespace Server.Engines.Craft
                     }
                 }
 
-                types[i] ??= new[] { baseType };
+                types[i] ??= [baseType];
                 amounts[i] = craftRes.Amount;
 
                 // For stackable items that can be crafted more than one at a time
@@ -735,12 +731,7 @@ namespace Server.Engines.Craft
                 {
                     for (var i = 0; i < amounts.Length; i++)
                     {
-                        amounts[i] /= 2;
-
-                        if (amounts[i] < 1)
-                        {
-                            amounts[i] = 1;
-                        }
+                        amounts[i] = Math.Max(1, amounts[i] / 2);
                     }
                 }
 

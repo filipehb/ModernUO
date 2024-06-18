@@ -16,8 +16,6 @@ public static class AssistantHandler
     {
         Enabled = ServerConfiguration.GetOrUpdateSetting("assistants.enableNegotiation", false);
 
-        EventSink.Login += OnLogin;
-
         IncomingPackets.Register(0xBE, 0, false, &AssistVersion);
         AssistantProtocol.Register(0xFF, false, &HandshakeResponse);
     }
@@ -36,18 +34,7 @@ public static class AssistantHandler
 
         if (AssistantConfiguration.Settings.WarnOnFailure)
         {
-            var warningGump = new WarningGump(
-                1060635,
-                30720,
-                AssistantConfiguration.Settings.WarningMessage,
-                0xFFC000,
-                420,
-                250,
-                null,
-                false
-            );
-
-            m.SendGump(warningGump);
+            m.SendGump(new AssistantFailureWarningGump());
         }
 
         if (isPlayer)
@@ -58,7 +45,7 @@ public static class AssistantHandler
         m.NetState.LogInfo("Failed to negotiate assistant features.");
     }
 
-    private static void OnLogin(Mobile m)
+    public static void OnLogin(Mobile m)
     {
         if (m?.NetState?.Running != true || !Enabled)
         {
@@ -76,7 +63,7 @@ public static class AssistantHandler
         _handshakes[m] = Timer.DelayCall(TimeSpan.FromSeconds(30), OnTimeout, m);
     }
 
-    public static void AssistVersion(NetState state, SpanReader reader, int packetLength)
+    public static void AssistVersion(NetState state, SpanReader reader)
     {
         // We are not supporting the old UOAssist protocol
         // var assistVersion = reader.ReadInt32();
@@ -87,7 +74,7 @@ public static class AssistantHandler
         state.Assistant = assistVersion.ContainsOrdinal(' ') ? assistVersion : $"RazorCE {assistVersion}";
     }
 
-    private static void HandshakeResponse(NetState state, SpanReader reader, int packetLength)
+    private static void HandshakeResponse(NetState state, SpanReader reader)
     {
         Mobile m = state.Mobile;
 
@@ -153,5 +140,16 @@ public static class AssistantHandler
         writer.Write((ulong)AssistantConfiguration.Settings.DisallowedFeatures);
 
         ns.Send(writer.Span);
+    }
+
+    private class AssistantFailureWarningGump : StaticWarningGump<AssistantFailureWarningGump>
+    {
+        private static readonly TextDefinition _warningMessage = AssistantConfiguration.Settings.WarningMessage;
+
+        public override int StaticLocalizedContent => _warningMessage?.Number ?? 0;
+        public override string Content => _warningMessage.String;
+        public override int Width => 420;
+        public override int Height => 250;
+        public override bool CancelButton => false;
     }
 }

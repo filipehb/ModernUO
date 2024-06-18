@@ -13,13 +13,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>. *
  *************************************************************************/
 
+using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Diagnostics;
-using Microsoft.Toolkit.HighPerformance;
+using System.IO;
+using System.Runtime.InteropServices;
+using CommunityToolkit.HighPerformance;
 using Server.Diagnostics;
+using Server.Engines.Help;
+using Server.Engines.MLQuests;
 using Server.Engines.Virtues;
 using Server.Exceptions;
+using Server.Guilds;
 using Server.Gumps;
+using Server.Items;
+using Server.Misc;
 using Server.Mobiles;
 
 namespace Server.Network;
@@ -55,18 +64,18 @@ public static class IncomingPlayerPackets
         IncomingPackets.RegisterEncoded(0x32, true, &QuestGumpRequest);
     }
 
-    public static void DeathStatusResponse(NetState state, SpanReader reader, int packetLength)
+    public static void DeathStatusResponse(NetState state, SpanReader reader)
     {
         // Ignored
     }
 
-    public static void RequestScrollWindow(NetState state, SpanReader reader, int packetLength)
+    public static void RequestScrollWindow(NetState state, SpanReader reader)
     {
         int lastTip = reader.ReadInt16();
         int type = reader.ReadByte();
     }
 
-    public static void AttackReq(NetState state, SpanReader reader, int packetLength)
+    public static void AttackReq(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
 
@@ -83,7 +92,7 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void HuePickerResponse(NetState state, SpanReader reader, int packetLength)
+    public static void HuePickerResponse(NetState state, SpanReader reader)
     {
         var serial = reader.ReadUInt32();
         _ = reader.ReadInt16(); // Item ID
@@ -100,7 +109,7 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void SystemInfo(NetState state, SpanReader reader, int packetLength)
+    public static void SystemInfo(NetState state, SpanReader reader)
     {
         int v1 = reader.ReadByte();
         int v2 = reader.ReadUInt16();
@@ -116,7 +125,7 @@ public static class IncomingPlayerPackets
         var v8 = reader.ReadInt32();
     }
 
-    public static void TextCommand(NetState state, SpanReader reader, int packetLength)
+    public static void TextCommand(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
 
@@ -132,7 +141,7 @@ public static class IncomingPlayerPackets
         {
             case 0xC7: // Animate
                 {
-                    EventSink.InvokeAnimateRequest(from, command);
+                    Animations.AnimateRequest(from, command);
 
                     break;
                 }
@@ -155,7 +164,7 @@ public static class IncomingPlayerPackets
                         booktype = 1;
                     }
 
-                    EventSink.InvokeOpenSpellbookRequest(from, booktype);
+                    Spellbook.OpenSpellbookRequest(from, booktype);
 
                     break;
                 }
@@ -165,13 +174,13 @@ public static class IncomingPlayerPackets
                     var spellID = (tokenizer.MoveNext() ? Utility.ToInt32(tokenizer.Current) : 0) - 1;
                     var serial = tokenizer.MoveNext() ? (Serial)Utility.ToUInt32(tokenizer.Current) : Serial.MinusOne;
 
-                    EventSink.InvokeCastSpellRequest(from, spellID, World.FindItem(serial));
+                    Spellbook.CastSpellRequest(from, spellID, World.FindItem(serial));
 
                     break;
                 }
             case 0x58: // Open door
                 {
-                    EventSink.InvokeOpenDoorMacroUsed(from);
+                    BaseDoor.OpenDoorMacroUsed(from);
 
                     break;
                 }
@@ -179,7 +188,7 @@ public static class IncomingPlayerPackets
                 {
                     var spellID = Utility.ToInt32(command) - 1;
 
-                    EventSink.InvokeCastSpellRequest(from, spellID, null);
+                    Spellbook.CastSpellRequest(from, spellID, null);
 
                     break;
                 }
@@ -211,7 +220,7 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void AsciiPromptResponse(NetState state, SpanReader reader, int packetLength)
+    public static void AsciiPromptResponse(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
 
@@ -247,7 +256,7 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void UnicodePromptResponse(NetState state, SpanReader reader, int packetLength)
+    public static void UnicodePromptResponse(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
 
@@ -284,7 +293,7 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void MenuResponse(NetState state, SpanReader reader, int packetLength)
+    public static void MenuResponse(NetState state, SpanReader reader)
     {
         var serial = reader.ReadUInt32();
         int menuID = reader.ReadInt16(); // unused in our implementation
@@ -314,118 +323,136 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void Disconnect(NetState state, SpanReader reader, int packetLength)
+    public static void Disconnect(NetState state, SpanReader reader)
     {
         var minusOne = reader.ReadInt32();
     }
 
-    public static void ConfigurationFile(NetState state, SpanReader reader, int packetLength)
+    public static void ConfigurationFile(NetState state, SpanReader reader)
     {
     }
 
-    public static void LogoutReq(NetState state, SpanReader reader, int packetLength)
+    public static void LogoutReq(NetState state, SpanReader reader)
     {
         state.SendLogoutAck();
     }
 
-    public static void ChangeSkillLock(NetState state, SpanReader reader, int packetLength)
+    public static void ChangeSkillLock(NetState state, SpanReader reader)
     {
         var s = state.Mobile.Skills[reader.ReadInt16()];
 
         s?.SetLockNoRelay((SkillLock)reader.ReadByte());
     }
 
-    public static void HelpRequest(NetState state, SpanReader reader, int packetLength)
+    public static void HelpRequest(NetState state, SpanReader reader)
     {
-        EventSink.InvokeHelpRequest(state.Mobile);
+        HelpGump.HelpRequest(state.Mobile);
     }
 
-    public static void DisplayGumpResponse(NetState state, SpanReader reader, int packetLength)
+    public static void DisplayGumpResponse(NetState state, SpanReader reader)
     {
         var serial = (Serial)reader.ReadUInt32();
-        var typeID = reader.ReadInt32();
-        var buttonID = reader.ReadInt32();
+        var typeId = reader.ReadInt32();
+        var buttonId = reader.ReadInt32();
 
-        foreach (var gump in state.Gumps)
+        BaseGump baseGump = null;
+
+        foreach (var g in state.Gumps)
         {
-            if (gump.Serial != serial || gump.TypeID != typeID)
+            if (g.Serial != serial || g.TypeID != typeId)
             {
                 continue;
             }
 
-            var buttonExists = buttonID == 0; // 0 is always 'close'
+            baseGump = g;
+            break;
+        }
 
-            if (!buttonExists)
+        if (baseGump != null)
+        {
+            if (baseGump is Gump gump)
             {
-                foreach (var e in gump.Entries)
-                {
-                    if (e is GumpButton button && button.ButtonID == buttonID)
-                    {
-                        buttonExists = true;
-                        break;
-                    }
+                var buttonExists = buttonId == 0; // 0 is always 'close'
 
-                    if (e is GumpImageTileButton tileButton && tileButton.ButtonID == buttonID)
+                if (!buttonExists)
+                {
+                    foreach (var e in gump.Entries)
                     {
-                        buttonExists = true;
-                        break;
+                        if ((e as GumpButton)?.ButtonID == buttonId)
+                        {
+                            buttonExists = true;
+                            break;
+                        }
+
+                        if ((e as GumpImageTileButton)?.ButtonID == buttonId)
+                        {
+                            buttonExists = true;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (!buttonExists)
-            {
-                state.LogInfo("Invalid gump response, disconnecting...");
-                var exception = new InvalidGumpResponseException($"Button {buttonID} doesn't exist");
-                exception.SetStackTrace(new StackTrace());
-                NetState.TraceException(exception);
-                state.Mobile?.SendMessage("Invalid gump response.");
-
-                // state.Disconnect("Invalid gump response.");
-                return;
+                if (!buttonExists)
+                {
+                    state.LogInfo("Invalid gump response, disconnecting...");
+                    var exception = new InvalidGumpResponseException($"Button {buttonId} doesn't exist");
+                    exception.SetStackTrace(new StackTrace());
+                    NetState.TraceException(exception);
+                    return;
+                }
             }
 
             var switchCount = reader.ReadInt32();
 
-            if (switchCount < 0 || switchCount > gump.Switches)
+            if (switchCount < 0 || switchCount > baseGump.Switches)
             {
                 state.LogInfo("Invalid gump response, disconnecting...");
                 var exception = new InvalidGumpResponseException($"Bad switch count {switchCount}");
                 exception.SetStackTrace(new StackTrace());
                 NetState.TraceException(exception);
-                state.Mobile?.SendMessage("Invalid gump response.");
-
-                // state.Disconnect("Invalid gump response.");
                 return;
             }
 
-            var switches = new int[switchCount];
+            int switchByteCount = switchCount * 4;
 
-            for (var i = 0; i < switches.Length; ++i)
+            // Read all the integers
+            ReadOnlySpan<int> switchBlock =
+                MemoryMarshal.Cast<byte, int>(reader.Buffer.Slice(reader.Position, switchByteCount));
+
+            reader.Seek(switchByteCount, SeekOrigin.Current);
+
+            scoped ReadOnlySpan<int> switches;
+
+            // Swap the endianness if necessary
+            if (BitConverter.IsLittleEndian)
             {
-                switches[i] = reader.ReadInt32();
+                Span<int> reversedSwitches = stackalloc int[switchCount];
+                BinaryPrimitives.ReverseEndianness(switchBlock, reversedSwitches);
+                switches = reversedSwitches;
+            }
+            else
+            {
+                switches = switchBlock;
             }
 
             var textCount = reader.ReadInt32();
-
-            if (textCount < 0 || textCount > gump.TextEntries)
+            if (textCount < 0 || textCount > baseGump.TextEntries)
             {
                 state.LogInfo("Invalid gump response, disconnecting...");
                 var exception = new InvalidGumpResponseException($"Bad text entry count {textCount}");
                 exception.SetStackTrace(new StackTrace());
                 NetState.TraceException(exception);
-                state.Mobile?.SendMessage("Invalid gump response.");
-
-                // state.Disconnect("Invalid gump response.");
                 return;
             }
 
-            var textEntries = new TextRelay[textCount];
+            Span<ushort> textIds = stackalloc ushort[textCount];
+            Span<Range> textFields = stackalloc Range[textCount];
 
-            for (var i = 0; i < textEntries.Length; ++i)
+            var textOffset = reader.Position;
+            for (var i = 0; i < textCount; i++)
             {
-                int entryID = reader.ReadUInt16();
-                int textLength = reader.ReadUInt16();
+                var textId = reader.ReadUInt16();
+                var textLength = reader.ReadUInt16();
 
                 if (textLength > 239)
                 {
@@ -433,35 +460,42 @@ public static class IncomingPlayerPackets
                     var exception = new InvalidGumpResponseException($"Text entry {i} is too long ({textLength})");
                     exception.SetStackTrace(new StackTrace());
                     NetState.TraceException(exception);
-                    state.Mobile?.SendMessage("Invalid gump response.");
-
-                    // state.Disconnect("Invalid gump response.");
                     return;
                 }
 
-                var text = reader.ReadBigUniSafe(textLength);
-                textEntries[i] = new TextRelay(entryID, text);
+                textIds[i] = textId;
+                var offset = reader.Position - textOffset;
+                var length = textLength * 2;
+                textFields[i] = offset..(offset + length);
+                reader.Seek(length, SeekOrigin.Current);
             }
 
-            state.RemoveGump(gump);
+            var textBlock = reader.Buffer.Slice(textOffset, reader.Position - textOffset);
 
-            var prof = GumpProfile.Acquire(gump.GetType());
+            state.RemoveGump(baseGump);
+
+            var prof = GumpProfile.Acquire(baseGump.GetType());
 
             prof?.Start();
 
-            gump.OnResponse(state, new RelayInfo(buttonID, switches, textEntries));
+            var relayInfo = new RelayInfo(
+                buttonId,
+                switches,
+                textIds,
+                textFields,
+                textBlock
+            );
+            baseGump.OnResponse(state, relayInfo);
 
             prof?.Finish();
-
-            return;
         }
 
-        if (typeID == 461)
+        if (typeId == 461)
         {
             // Virtue gump
             var switchCount = reader.Remaining >= 4 ? reader.ReadInt32() : 0;
 
-            if (buttonID == 1 && switchCount > 0)
+            if (buttonId == 1 && switchCount > 0)
             {
                 var beheld = World.FindEntity<PlayerMobile>((Serial)reader.ReadUInt32());
 
@@ -476,19 +510,19 @@ public static class IncomingPlayerPackets
 
                 if (beheld != null)
                 {
-                    VirtueGump.RequestVirtueItem((PlayerMobile)state.Mobile, beheld, buttonID);
+                    VirtueGump.RequestVirtueItem((PlayerMobile)state.Mobile, beheld, buttonId);
                 }
             }
         }
     }
 
-    public static void SetWarMode(NetState state, SpanReader reader, int packetLength)
+    public static void SetWarMode(NetState state, SpanReader reader)
     {
         state.Mobile?.DelayChangeWarmode(reader.ReadBoolean());
     }
 
     // TODO: Throttle/make this more safe
-    public static void Resynchronize(NetState state, SpanReader reader, int packetLength)
+    public static void Resynchronize(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
 
@@ -505,17 +539,17 @@ public static class IncomingPlayerPackets
         state.Sequence = 0;
     }
 
-    public static void PingReq(NetState state, SpanReader reader, int packetLength)
+    public static void PingReq(NetState state, SpanReader reader)
     {
         state.SendPingAck(reader.ReadByte());
     }
 
-    public static void SetUpdateRange(NetState state, SpanReader reader, int packetLength)
+    public static void SetUpdateRange(NetState state, SpanReader reader)
     {
         state.SendChangeUpdateRange(18);
     }
 
-    public static void MobileQuery(NetState state, SpanReader reader, int packetLength)
+    public static void MobileQuery(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
         if (from == null)
@@ -552,7 +586,7 @@ public static class IncomingPlayerPackets
         }
     }
 
-    public static void CrashReport(NetState state, SpanReader reader, int packetLength)
+    public static void CrashReport(NetState state, SpanReader reader)
     {
         var clientMaj = reader.ReadByte();
         var clientMin = reader.ReadByte();
@@ -588,15 +622,15 @@ public static class IncomingPlayerPackets
 
     public static void GuildGumpRequest(NetState state, IEntity e, EncodedReader reader)
     {
-        EventSink.InvokeGuildGumpRequest(state.Mobile);
+        Guild.GuildGumpRequest(state.Mobile);
     }
 
     public static void QuestGumpRequest(NetState state, IEntity e, EncodedReader reader)
     {
-        EventSink.InvokeQuestGumpRequest(state.Mobile);
+        MLQuestSystem.QuestGumpRequest(state.Mobile);
     }
 
-    public static unsafe void EncodedCommand(NetState state, SpanReader reader, int packetLength)
+    public static unsafe void EncodedCommand(NetState state, SpanReader reader)
     {
         var e = World.FindEntity((Serial)reader.ReadUInt32());
         int packetId = reader.ReadUInt16();

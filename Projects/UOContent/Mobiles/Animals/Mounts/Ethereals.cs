@@ -145,7 +145,7 @@ namespace Server.Mobiles
         public virtual int StepsMax => 3840; // Should be same as horse
 
         public virtual int StepsGainedPerIdleTime => 1;
-        public virtual TimeSpan IdleTimePerStepsGain => TimeSpan.FromSeconds(10);
+        public virtual TimeSpan IdleTimePerStepsGain => TimeSpan.FromSeconds(1);
 
         public void OnRiderDamaged(int amount, Mobile from, bool willKill)
         {
@@ -421,6 +421,8 @@ namespace Server.Mobiles
             : base(0x20DD, 0x3EAA)
         {
         }
+
+        public override int LabelNumber => 1041298; // Ethereal Horse Statuette
     }
 
     [SerializationGenerator(0, false)]

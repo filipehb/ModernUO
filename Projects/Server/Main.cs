@@ -25,6 +25,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Server.Compression;
 using Server.Json;
 using Server.Logging;
 using Server.Network;
@@ -36,6 +37,8 @@ public static class Core
 {
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(Core));
 
+    private static bool _performProcessKill;
+    private static bool _restartOnKill;
     private static bool _performSnapshot;
     private static bool _crashed;
     private static string _baseDirectory;
@@ -43,9 +46,7 @@ public static class Core
     private static bool _profiling;
     private static long _profileStart;
     private static long _profileTime;
-#nullable enable
     private static bool? _isRunningFromXUnit;
-#nullable restore
 
     private static int _itemCount;
     private static int _mobileCount;
@@ -112,6 +113,7 @@ public static class Core
     public static TimeSpan ProfileTime =>
         TimeSpan.FromTicks(_profileStart > 0 ? _profileTime + (Stopwatch.GetTimestamp() - _profileStart) : _profileTime);
 
+    public static Assembly ApplicationAssembly { get; set; }
     public static Assembly Assembly { get; set; }
 
     // Assembly file version
@@ -175,10 +177,6 @@ public static class Core
 
     public static double AverageCPS => _cyclesPerSecond.Average();
 
-    public static bool MultiProcessor { get; private set; }
-
-    public static int ProcessorCount { get; private set; }
-
     public static string BaseDirectory
     {
         get
@@ -187,7 +185,7 @@ public static class Core
             {
                 try
                 {
-                    _baseDirectory = Assembly.Location;
+                    _baseDirectory = ApplicationAssembly.Location;
 
                     if (_baseDirectory.Length > 0)
                     {
@@ -304,7 +302,13 @@ public static class Core
         }
     }
 
-    private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+    public static void Kill(bool restart = false)
+    {
+        _restartOnKill = restart;
+        _performProcessKill = true;
+    }
+
+    public static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
         Console.WriteLine(e.IsTerminating ? "Error:" : "Warning:");
         Console.WriteLine(e.ExceptionObject);
@@ -331,10 +335,10 @@ public static class Core
             if (!close)
             {
                 Console.WriteLine("This exception is fatal, press return to exit");
-                Console.ReadLine();
+                ConsoleInputHandler.ReadLine();
             }
 
-            Kill();
+            DoKill();
         }
     }
 
@@ -359,7 +363,7 @@ public static class Core
         Kill();
     }
 
-    public static void Kill(bool restart = false)
+    internal static void DoKill(bool restart = false)
     {
         if (Closing)
         {
@@ -370,27 +374,34 @@ public static class Core
 
         if (restart)
         {
-            if (IsWindows)
+            try
             {
-                Process.Start("dotnet", Assembly.Location);
-            }
-            else
-            {
-                var process = new Process
+                logger.Information("Restarting");
+                if (IsWindows)
                 {
-                    StartInfo = new ProcessStartInfo
+                    using var process = Process.Start("dotnet", $"{ApplicationAssembly.Location} {Arguments}");
+                }
+                else
+                {
+                    using var process = new Process();
+                    process.StartInfo = new ProcessStartInfo
                     {
                         FileName = "dotnet",
-                        Arguments = Assembly.Location,
+                        Arguments = $"{ApplicationAssembly.Location} {Arguments}",
                         UseShellExecute = true
-                    }
-                };
+                    };
 
-                process.Start();
+                    process.Start();
+                }
+                logger.Information("Restart done");
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, "Restart failed");
             }
         }
 
-        Process.Kill();
+        Environment.Exit(0);
     }
 
     private static void HandleClosed()
@@ -409,37 +420,22 @@ public static class Core
         }
     }
 
-    public static void Main(string[] args)
+    public static void Setup(bool profiling, Assembly applicationAssembly, Process process)
     {
+        Process = process;
+        ApplicationAssembly = applicationAssembly;
+        Assembly = Assembly.GetAssembly(typeof(Core));
+        Thread = Thread.CurrentThread;
+        LoopContext = new EventLoopContext();
+        SynchronizationContext.SetSynchronizationContext(LoopContext);
+        Profiling = profiling;
+
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
         AppDomain.CurrentDomain.AssemblyResolve += AssemblyHandler.AssemblyResolver;
 
-        LoopContext = new EventLoopContext();
-
-        SynchronizationContext.SetSynchronizationContext(LoopContext);
-
-        foreach (var a in args)
-        {
-            if (a.InsensitiveEquals("-profile"))
-            {
-                Profiling = true;
-            }
-        }
-
-        Thread = Thread.CurrentThread;
-        Process = Process.GetCurrentProcess();
-        Assembly = Assembly.GetEntryAssembly();
-
-        if (Assembly == null)
-        {
-            throw new Exception("Assembly entry is missing.");
-        }
-
-        if (Thread != null)
-        {
-            Thread.Name = "Core Thread";
-        }
+        Console.OutputEncoding = Encoding.UTF8;
+        Thread.Name = "Core Thread";
 
         if (BaseDirectory.Length > 0)
         {
@@ -466,14 +462,11 @@ public static class Core
             ".TrimMultiline());
         Utility.PopColor();
 
-        ProcessorCount = Environment.ProcessorCount;
-
-        if (ProcessorCount > 1)
-        {
-            MultiProcessor = true;
-        }
-
         Console.CancelKeyPress += Console_CancelKeyPressed;
+
+        // LibDeflate is not thread safe, so we need to create a new instance for each thread
+        var standard = Deflate.Standard;
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => standard.Dispose();
 
         ServerConfiguration.Load();
 
@@ -484,11 +477,6 @@ public static class Core
         if (s.Length > 0)
         {
             logger.Information("Running with arguments: {Args}", s);
-        }
-
-        if (MultiProcessor)
-        {
-            logger.Information($"Optimizing for {{ProcessorCount}} processor{(ProcessorCount == 1 ? "" : "s")}", ProcessorCount);
         }
 
         var assemblyPath = Path.Join(BaseDirectory, AssembliesConfiguration);
@@ -554,9 +542,8 @@ public static class Core
                 Timer.Slice(_tickCount);
 
                 // Handle networking
-                TcpServer.Slice();
                 NetState.Slice();
-                PingServer.Slice();
+                // PingServer.Slice();
 
                 // Execute captured post-await methods (like Timer.Pause)
                 LoopContext.ExecuteTasks();
@@ -567,6 +554,12 @@ public static class Core
                 {
                     // Return value is the offset that can be used to fix timers that should drift
                     World.Snapshot();
+                    _performSnapshot = false;
+                }
+
+                if (_performProcessKill)
+                {
+                    break;
                 }
 
                 _tickCount = 0;
@@ -595,11 +588,10 @@ public static class Core
         catch (Exception e)
         {
             CurrentDomain_UnhandledException(null, new UnhandledExceptionEventArgs(e, true));
+            return;
         }
-        finally
-        {
-            World.ExitSerializationThreads();
-        }
+
+        DoKill(_restartOnKill);
     }
 
     internal static void RequestSnapshot() => _performSnapshot = true;

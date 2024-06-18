@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Server.Collections;
 using Server.ContextMenus;
@@ -209,7 +210,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         m_ItemID = itemID;
         Serial = World.NewItem;
 
-        // m_Items = new ArrayList( 1 );
         Visible = true;
         Movable = true;
         Amount = 1;
@@ -255,13 +255,19 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
     }
 
     // Sectors
+    [IgnoreDupe]
     public Item Next { get; set; }
+
+    [IgnoreDupe]
     public Item Previous { get; set; }
+
+    [IgnoreDupe]
     public bool OnLinkList { get; set; }
 
     /// <summary>
     ///     The <see cref="Mobile" /> who is currently <see cref="Mobile.Holding">holding</see> this item.
     /// </summary>
+    [IgnoreDupe]
     public Mobile HeldBy
     {
         get => LookupCompactInfo()?.m_HeldBy;
@@ -374,6 +380,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
     public static int SecureFlag { get; set; }
 
+    [IgnoreDupe]
     public bool IsLockedDown
     {
         get => GetTempFlag(LockedDownFlag);
@@ -384,6 +391,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
     }
 
+    [IgnoreDupe]
     public bool IsSecure
     {
         get => GetTempFlag(SecureFlag);
@@ -447,7 +455,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         {
             var info = LookupCompactInfo();
 
-            return info != null && info.m_Weight != -1 ? info.m_Weight : DefaultWeight;
+            return info is { m_Weight: >= 0 } ? info.m_Weight : DefaultWeight;
         }
         set
         {
@@ -459,7 +467,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
                 info.m_Weight = value;
 
-                if (info.m_Weight == -1)
+                if (info.m_Weight < 0)
                 {
                     VerifyCompactInfo();
                 }
@@ -586,7 +594,9 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
     }
 
-    [CommandProperty(AccessLevel.GameMaster, AccessLevel.Developer)]
+    // Note: Setting the parent via command/props causes problems.
+    [IgnoreDupe]
+    [CommandProperty(AccessLevel.GameMaster, readOnly: true)]
     public IEntity Parent
     {
         get => m_Parent;
@@ -599,18 +609,16 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
             var oldParent = m_Parent;
 
+            if (m_Map != null && oldParent == null && value != null)
+            {
+                m_Map.OnLeave(this);
+            }
+
             m_Parent = value;
 
-            if (m_Map != null)
+            if (m_Map != null && oldParent != null && value == null)
             {
-                if (oldParent != null && m_Parent == null)
-                {
-                    m_Map.OnEnter(this);
-                }
-                else if (m_Parent != null)
-                {
-                    m_Map.OnLeave(this);
-                }
+                m_Map.OnEnter(this);
             }
         }
     }
@@ -656,6 +664,17 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 var oldPileWeight = PileWeight;
 
                 m_Amount = value;
+
+                if (m_Amount <= 0)
+                {
+                    logger.Error(
+                        new Exception("Item.Amount <= 0 error"),
+                        "Item {Type} ({Serial}) was changed to amount of {Amount}, but must be at least 1",
+                        GetType(),
+                        Serial,
+                        m_Amount
+                    );
+                }
 
                 var newPileWeight = PileWeight;
 
@@ -745,6 +764,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
     public int CompareTo(Item other) => other == null ? -1 : Serial.CompareTo(other.Serial);
 
     public virtual int HuedItemID => m_ItemID;
+
     public ObjectPropertyList PropertyList => m_PropertyList ??= InitializePropertyList(new ObjectPropertyList(this));
 
     /// <summary>
@@ -759,13 +779,17 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         AddNameProperties(list);
     }
 
+    [IgnoreDupe]
     [CommandProperty(AccessLevel.GameMaster, readOnly: true)]
     public DateTime Created { get; set; } = Core.Now;
 
+    [IgnoreDupe]
     public long SavePosition { get; set; } = -1;
 
+    [IgnoreDupe]
     public BufferWriter SaveBuffer { get; set; }
 
+    [IgnoreDupe]
     [CommandProperty(AccessLevel.Counselor)]
     public Serial Serial { get; }
 
@@ -883,26 +907,23 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             }
         }
 
-        if (info == null || info.m_Weight == -1.0)
+        if (info == null || info.m_Weight < 0)
         {
             flags |= SaveFlag.NullWeight;
         }
-        else
+        else if (info.m_Weight == 0.0)
         {
-            if (info.m_Weight == 0.0)
+            flags |= SaveFlag.WeightIs0;
+        }
+        else if (info.m_Weight > 0)
+        {
+            if (info.m_Weight == (int)info.m_Weight)
             {
-                flags |= SaveFlag.WeightIs0;
+                flags |= SaveFlag.IntWeight;
             }
-            else if (info.m_Weight != 1.0)
+            else
             {
-                if (info.m_Weight == (int)info.m_Weight)
-                {
-                    flags |= SaveFlag.IntWeight;
-                }
-                else
-                {
-                    flags |= SaveFlag.WeightNot1or0;
-                }
+                flags |= SaveFlag.WeightNot1or0;
             }
         }
 
@@ -1210,9 +1231,13 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             {
                 var old = m_Map;
 
-                if (m_Map != null && m_Parent == null)
+                if (m_Map != null)
                 {
-                    m_Map.OnLeave(this);
+                    if (m_Parent == null)
+                    {
+                        m_Map.OnLeave(this);
+                    }
+
                     SendRemovePacket();
                 }
 
@@ -1435,6 +1460,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         ClearProperties();
     }
 
+    [IgnoreDupe]
     public ISpawner Spawner
     {
         get => LookupCompactInfo()?.m_Spawner;
@@ -1607,7 +1633,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                 flags |= ExpandFlag.TempFlag;
             }
 
-            if (info.m_Weight != -1)
+            if (info.m_Weight >= 0)
             {
                 flags |= ExpandFlag.Weight;
             }
@@ -1642,7 +1668,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
                       || info.m_Spawner != null
                       || info.m_TempFlags != 0
                       || info.m_SavedFlags != 0
-                      || info.m_Weight != -1;
+                      || info.m_Weight >= 0;
 
         if (!isValid)
         {
@@ -3331,18 +3357,45 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
     }
 
-    private static readonly HashSet<string> _excludedProperties = new()
-    {
-        "Parent",
-        "Next",
-        "Previous",
-        "OnLinkList"
-    };
-
-    public virtual bool DupeExcludedProperty(string propertyName) => _excludedProperties.Contains(propertyName);
-
     public virtual void OnAfterDuped(Item newItem)
     {
+    }
+
+    // Warning: This uses reflection and is slow!
+    public virtual void Dupe(Item newItem)
+    {
+        CopyProperties(this, newItem);
+        OnAfterDuped(newItem);
+    }
+
+    // Warning: This uses reflection and is slow!
+    public static void CopyProperties(Item src, Item dest)
+    {
+        var props = src.GetType().GetProperties();
+
+        for (var i = 0; i < props.Length; i++)
+        {
+            var p = props[i];
+            if (p.GetCustomAttribute(typeof(IgnoreDupeAttribute), true) != null || !p.CanRead || !p.CanWrite)
+            {
+                continue;
+            }
+
+            var setMethod = p.GetSetMethod(false);
+
+            try
+            {
+                // Do not copy private properties
+                if (setMethod != null)
+                {
+                    p.SetValue(dest, p.GetValue(src, null), null);
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+        }
     }
 
     public virtual bool OnDragLift(Mobile from) => true;
@@ -3518,11 +3571,8 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             }
         }
 
-        var tiles = map.Tiles.GetStaticTiles(x, y, true);
-
-        for (var i = 0; i < tiles.Length; ++i)
+        foreach (var tile in map.Tiles.GetStaticAndMultiTiles(x, y))
         {
-            var tile = tiles[i];
             var id = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
 
             if (!id.Surface)
@@ -3541,7 +3591,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
 
         using var items = PooledRefList<Item>.Create();
-        foreach (var item in map.GetItemsInRange(p, 0))
+        foreach (var item in map.GetItemsAt(p))
         {
             if (item is BaseMulti || item.ItemID > TileData.MaxItemValue)
             {
@@ -3576,9 +3626,8 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
 
         var surfaceZ = z;
 
-        for (var i = 0; i < tiles.Length; ++i)
+        foreach (var tile in map.Tiles.GetStaticAndMultiTiles(x, y))
         {
-            var tile = tiles[i];
             var id = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
 
             var checkZ = tile.Z;
@@ -3681,9 +3730,8 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             return false;
         }
 
-        for (var i = 0; i < tiles.Length; ++i)
+        foreach (var tile in map.Tiles.GetStaticAndMultiTiles(x, y))
         {
-            var tile = tiles[i];
             var id = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
 
             var checkZ = tile.Z;
@@ -4115,17 +4163,10 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         }
     }
 
-    public virtual void ScissorHelper(Mobile from, Item newItem, int amountPerOldItem)
-    {
-        ScissorHelper(from, newItem, amountPerOldItem, true);
-    }
-
-    public virtual void ScissorHelper(Mobile from, Item newItem, int amountPerOldItem, bool carryHue)
+    public virtual void ScissorHelper(Mobile from, Item newItem, int amountPerOldItem, bool carryHue = true)
     {
         // let's not go over 60000
         var amount = Math.Min(Amount, 60000 / amountPerOldItem);
-
-        Amount -= amount;
 
         var ourHue = Hue;
         var thisMap = Map;
@@ -4133,10 +4174,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         var worldLoc = GetWorldLocation();
         var type = LootType;
 
-        if (Amount == 0)
-        {
-            Delete();
-        }
+        Consume(amount);
 
         newItem.Amount = amount * amountPerOldItem;
 

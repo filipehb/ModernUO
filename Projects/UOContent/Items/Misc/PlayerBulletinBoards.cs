@@ -31,6 +31,7 @@ public partial class PlayerBBEast : BasePlayerBB
 [SerializationGenerator(0, false)]
 public abstract partial class BasePlayerBB : Item, ISecurable
 {
+    [SerializedIgnoreDupe]
     [SerializableField(0)]
     [SerializedCommandProperty(AccessLevel.GameMaster)]
     private SecureLevel _level;
@@ -40,10 +41,12 @@ public abstract partial class BasePlayerBB : Item, ISecurable
     private string _title;
 
     [CanBeNull]
+    [SerializedIgnoreDupe]
     [SerializableField(2)]
     [SerializedCommandProperty(AccessLevel.GameMaster)]
     private PlayerBBMessage _greeting;
 
+    [SerializedIgnoreDupe]
     [SerializableField(3)]
     private List<PlayerBBMessage> _messages;
 
@@ -51,6 +54,25 @@ public abstract partial class BasePlayerBB : Item, ISecurable
     {
         _messages = new List<PlayerBBMessage>();
         _level = SecureLevel.Anyone;
+    }
+
+    public override void OnAfterDuped(Item newItem)
+    {
+        if (newItem is not BasePlayerBB board)
+        {
+            return;
+        }
+
+        if (_greeting != null)
+        {
+            board.Greeting = new PlayerBBMessage(_greeting.Time, _greeting.Poster, _greeting.Message);
+        }
+
+        for (var i = 0; i < _messages.Count; i++)
+        {
+            var message = _messages[i];
+            board.AddToMessages(new PlayerBBMessage(message.Time, message.Poster, message.Message));
+        }
     }
 
     public override void GetContextMenuEntries(Mobile from, List<ContextMenuEntry> list)
@@ -153,11 +175,11 @@ public abstract partial class BasePlayerBB : Item, ISecurable
                 }
                 else
                 {
-                    board.Add(board.Messages, message);
+                    board.AddToMessages(message);
 
                     if (board.Messages.Count > 50)
                     {
-                        board.RemoveAt(board.Messages, 0);
+                        board.RemoveFromMessagesAt(0);
 
                         if (page > 0)
                         {
@@ -346,7 +368,7 @@ public class PlayerBBGump : Gump
         }
     }
 
-    public override void OnResponse(NetState sender, RelayInfo info)
+    public override void OnResponse(NetState sender, in RelayInfo info)
     {
         var page = _page;
         var from = _from;
@@ -491,7 +513,7 @@ public class PlayerBBGump : Gump
                     {
                         if (page >= 1 && page <= board.Messages.Count)
                         {
-                            board.RemoveAt(board.Messages, page - 1);
+                            board.RemoveFromMessagesAt(page - 1);
                         }
 
                         from.SendGump(new PlayerBBGump(from, house, board, 0));

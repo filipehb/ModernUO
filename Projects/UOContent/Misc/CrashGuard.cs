@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using Server.Accounting;
 using Server.Custom;
@@ -51,7 +50,8 @@ namespace Server.Misc
 
             if (RestartServer)
             {
-                Restart(e);
+                e.Close = true;
+                Core.Kill(true);
             }
         }
 
@@ -185,11 +185,11 @@ namespace Server.Misc
 
                     try
                     {
-                        var states = TcpServer.Instances;
+                        var states = NetState.Instances;
 
                         op.WriteLine($"- Count: {states.Count}");
 
-                        foreach (var ns in TcpServer.Instances)
+                        foreach (var ns in NetState.Instances)
                         {
                             op.Write($"+ {ns}:");
 

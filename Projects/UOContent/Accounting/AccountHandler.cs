@@ -1,12 +1,20 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using Server.Accounting;
+using Server.Engines.CannedEvil;
 using Server.Engines.Help;
+using Server.Engines.PlayerMurderSystem;
+using Server.Engines.Virtues;
 using Server.Logging;
 using Server.Network;
 using Server.Regions;
+using Server.Spells.Fifth;
+using Server.Spells.First;
+using Server.Spells.Mysticism;
+using Server.Spells.Necromancy;
+using Server.Spells.Ninjitsu;
+using Server.Spells.Second;
 
 namespace Server.Misc;
 
@@ -19,33 +27,6 @@ public static class AccountHandler
     private static bool RestrictDeletion = !TestCenter.Enabled;
     private static TimeSpan DeleteDelay = TimeSpan.FromDays(7.0);
     private static bool PasswordCommandEnabled;
-
-    private static CityInfo[] OldHavenStartingCities =
-    {
-        new("Yew", "The Empath Abbey", 633, 858, 0),
-        new("Minoc", "The Barnacle", 2476, 413, 15),
-        new("Britain", "Sweet Dreams Inn", 1496, 1628, 10),
-        new("Moonglow", "The Scholars Inn", 4408, 1168, 0),
-        new("Trinsic", "The Traveler's Inn", 1845, 2745, 0),
-        new("Magincia", "The Great Horns Tavern", 3734, 2222, 20),
-        new("Jhelom", "The Mercenary Inn", 1374, 3826, 0),
-        new("Skara Brae", "The Falconer's Inn", 618, 2234, 0),
-        new("Vesper", "The Ironwood Inn", 2771, 976, 0),
-        new("Haven", "Buckler's Hideaway", 3667, 2625, 0)
-    };
-
-    private static CityInfo[] StartingCities =
-    {
-        new("New Haven", "New Haven Bank", 1150168, 3667, 2625, 0),
-        new("Yew", "The Empath Abbey", 1075072, 633, 858, 0),
-        new("Minoc", "The Barnacle", 1075073, 2476, 413, 15),
-        new("Britain", "The Wayfarer's Inn", 1075074, 1602, 1591, 20),
-        new("Moonglow", "The Scholars Inn", 1075075, 4408, 1168, 0),
-        new("Trinsic", "The Traveler's Inn", 1075076, 1845, 2745, 0),
-        new("Jhelom", "The Mercenary Inn", 1075078, 1374, 3826, 0),
-        new("Skara Brae", "The Falconer's Inn", 1075079, 618, 2234, 0),
-        new("Vesper", "The Ironwood Inn", 1075080, 2771, 976, 0)
-    };
 
     private static Dictionary<IPAddress, int> m_IPTable;
 
@@ -83,18 +64,17 @@ public static class AccountHandler
             "accountHandler.enablePlayerPasswordCommand",
             false
         );
-    }
-
-    public static void Initialize()
-    {
-        EventSink.DeleteRequest += EventSink_DeleteRequest;
-        EventSink.AccountLogin += EventSink_AccountLogin;
-        EventSink.GameLogin += EventSink_GameLogin;
 
         if (PasswordCommandEnabled)
         {
             CommandSystem.Register("Password", AccessLevel.Player, Password_OnCommand);
         }
+    }
+
+    public static void Initialize()
+    {
+        EventSink.AccountLogin += EventSink_AccountLogin;
+        EventSink.GameLogin += EventSink_GameLogin;
     }
 
     [Usage("Password <newPassword> <repeatPassword>")]
@@ -163,7 +143,7 @@ public static class AccountHandler
         {
             var ipAddress = ns.Address;
 
-            if (Utility.IPMatchClassC(accessList[0], ipAddress))
+            if (accessList[0].MatchClassC(ipAddress))
             {
                 acct.SetPassword(pass);
                 from.SendMessage("The password to your account has changed.");
@@ -210,7 +190,7 @@ public static class AccountHandler
         }
     }
 
-    private static void EventSink_DeleteRequest(NetState state, int index)
+    public static void DeleteRequest(NetState state, int index)
     {
         if (state.Account is not Account acct)
         {
@@ -256,7 +236,20 @@ public static class AccountHandler
 
                 m.Delete();
 
-                EventSink.InvokePlayerDeleted(m);
+                StaminaSystem.OnPlayerDeleted(m);
+                JusticeVirtue.OnPlayerDeleted(m);
+                PlayerMurderSystem.OnPlayerDeleted(m);
+                ChampionTitleSystem.OnPlayerDeleted(m);
+
+                // Spells
+                MagicReflectSpell.EndReflect(m);
+                ReactiveArmorSpell.EndArmor(m);
+                ProtectionSpell.EndProtection(m);
+                StoneFormSpell.RemoveEffects(m);
+                AnimateDeadSpell.RemoveEffects(m);
+                SummonFamiliarSpell.RemoveEffects(m);
+                AnimalForm.RemoveLastAnimalForm(m);
+
                 state.SendCharacterListUpdate(acct);
                 return;
             }
@@ -329,19 +322,6 @@ public static class AccountHandler
 
     public static void EventSink_AccountLogin(AccountLoginEventArgs e)
     {
-        if (!IPLimiter.SocketBlock && !IPLimiter.Verify(e.State.Address))
-        {
-            e.Accepted = false;
-            e.RejectReason = ALRReason.InUse;
-
-            logger.Information("Login: {NetState}: Past IP limit threshold", e.State);
-
-            using var op = new StreamWriter("ipLimits.log", true);
-            op.WriteLine($"{e.State}\tPast IP limit threshold\t{Core.Now}");
-
-            return;
-        }
-
         var un = e.Username;
         var pw = e.Password;
 
@@ -350,7 +330,7 @@ public static class AccountHandler
         if (Accounts.GetAccount(un) is not Account acct)
         {
             // To prevent someone from making an account of just '' or a bunch of meaningless spaces
-            if (AutoAccountCreation && un.Trim().Length > 0)
+            if (AutoAccountCreation && !string.IsNullOrWhiteSpace(un))
             {
                 e.State.Account = acct = CreateAccount(e.State, un, pw);
                 e.Accepted = acct?.CheckAccess(e.State) ?? false;
@@ -389,27 +369,10 @@ public static class AccountHandler
 
             acct.LogAccess(e.State);
         }
-
-        if (!e.Accepted)
-        {
-            AccountAttackLimiter.RegisterInvalidAccess(e.State);
-        }
     }
 
     public static void EventSink_GameLogin(GameLoginEventArgs e)
     {
-        if (!IPLimiter.SocketBlock && !IPLimiter.Verify(e.State.Address))
-        {
-            e.Accepted = false;
-
-            logger.Warning("Login: {NetState} Past IP limit threshold", e.State);
-
-            using var op = new StreamWriter("ipLimits.log", true);
-            op.WriteLine($"{e.State}\tPast IP limit threshold\t{Core.Now}");
-
-            return;
-        }
-
         var un = e.Username;
         var pw = e.Password;
 
@@ -439,12 +402,7 @@ public static class AccountHandler
             logger.Information("Login: {NetState} Account '{Username}' at character list", e.State, un);
             e.State.Account = acct;
             e.Accepted = true;
-            e.CityInfo = TileMatrix.Pre6000ClientSupport ? OldHavenStartingCities : StartingCities;
-        }
-
-        if (!e.Accepted)
-        {
-            AccountAttackLimiter.RegisterInvalidAccess(e.State);
+            e.CityInfo = CharacterCreation.GetStartingCities();
         }
     }
 

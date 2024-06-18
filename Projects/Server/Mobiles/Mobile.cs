@@ -15,7 +15,6 @@ using Server.Network;
 using Server.Prompts;
 using Server.Targeting;
 using Server.Text;
-using Server.Utilities;
 using CalcMoves = Server.Movement.Movement;
 
 namespace Server;
@@ -491,8 +490,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             if (oldValue != value)
             {
                 m_Hunger = value;
-
-                EventSink.InvokeHungerChanged(this, oldValue);
+                OnHungerChanged(oldValue);
             }
         }
     }
@@ -867,10 +865,12 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         }
     }
 
+    [IgnoreDupe]
     public bool Pushing { get; set; }
 
     public virtual bool IsDeadBondedPet => false;
 
+    [IgnoreDupe]
     public ISpell Spell
     {
         get => m_Spell;
@@ -1001,7 +1001,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
     public static IWeapon DefaultWeapon { get; set; }
 
-    [CommandProperty(AccessLevel.Counselor)]
+    [CommandProperty(AccessLevel.Counselor, canModify: true)]
     public Skills Skills { get; private set; }
 
     [CommandProperty(AccessLevel.Counselor, AccessLevel.Administrator)]
@@ -2258,13 +2258,17 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         AddNameProperties(list);
     }
 
+    [IgnoreDupe]
     [CommandProperty(AccessLevel.GameMaster, readOnly: true)]
     public DateTime Created { get; set; } = Core.Now;
 
+    [IgnoreDupe]
     public long SavePosition { get; set; } = -1;
 
+    [IgnoreDupe]
     public BufferWriter SaveBuffer { get; set; }
 
+    [IgnoreDupe]
     [CommandProperty(AccessLevel.Counselor)]
     public Serial Serial { get; }
 
@@ -2721,9 +2725,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         Span<byte> facialHairPacket = stackalloc byte[facialHairLength].InitializePacket();
 
         const int cacheLength = OutgoingMobilePackets.MobileMovingPacketCacheByteLength;
-        const int width = OutgoingMobilePackets.MobileMovingPacketLength;
 
-        var mobileMovingCache = stackalloc byte[cacheLength].InitializePackets(width);
+        Span<byte> mobileMovingCache = stackalloc byte[cacheLength];
+        mobileMovingCache.Clear();
 
         var ourState = m_NetState;
 
@@ -3273,9 +3277,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
         string suffix = hasTitle switch
         {
-            true when hasGuild  => $" {Title} [{Utility.FixHtmlFormattable(guild.Abbreviation)}]",
+            true when hasGuild  => $" {Title} [{guild.Abbreviation.FixHtmlFormattable()}]",
             true                => $" {Title}",
-            false when hasGuild => $" [{Utility.FixHtmlFormattable(guild.Abbreviation)}]",
+            false when hasGuild => $" [{guild.Abbreviation.FixHtmlFormattable()}]",
             _                   => " "
         };
 
@@ -3291,16 +3295,16 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             {
                 if (NewGuildDisplay)
                 {
-                    list.Add($"{Utility.FixHtmlFormattable(guildTitle)}, {Utility.FixHtmlFormattable(guild.Name)}");
+                    list.Add($"{guildTitle.FixHtmlFormattable()}, {guild.Name.FixHtmlFormattable()}");
                 }
                 else
                 {
-                    list.Add($"{Utility.FixHtmlFormattable(guildTitle)}, {Utility.FixHtmlFormattable(guild.Name)} Guild{type}");
+                    list.Add($"{guildTitle.FixHtmlFormattable()}, {guild.Name.FixHtmlFormattable()} Guild{type}");
                 }
             }
             else
             {
-                list.Add(Utility.FixHtml(guild.Name));
+                list.Add(guild.Name.FixHtml());
             }
         }
     }
@@ -3699,6 +3703,14 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
     {
     }
 
+    /// <summary>
+    ///     Overridable. Virtual event invoked after the <see cref="Hunger" /> property has changed.
+    ///     <seealso cref="Hunger" />
+    /// </summary>
+    public virtual void OnHungerChanged(int oldValue)
+    {
+    }
+
     public double GetDistanceToSqrt(Point3D p)
     {
         var xDelta = m_Location.m_X - p.m_X;
@@ -3711,6 +3723,14 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
     {
         var xDelta = m_Location.m_X - m.m_Location.m_X;
         var yDelta = m_Location.m_Y - m.m_Location.m_Y;
+
+        return Math.Sqrt(xDelta * xDelta + yDelta * yDelta);
+    }
+
+    public double GetDistanceToSqrt(Point2D p)
+    {
+        var xDelta = m_Location.m_X - p.X;
+        var yDelta = m_Location.m_Y - p.Y;
 
         return Math.Sqrt(xDelta * xDelta + yDelta * yDelta);
     }
@@ -4331,9 +4351,8 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         if (m_NetState != null)
         {
             m_NetState._nextMovementTime += ComputeMovementSpeed(d);
+            m_NetState.SendMovementAck(m_NetState.Sequence, this);
         }
-
-        m_NetState?.SendMovementAck(m_NetState.Sequence, this);
 
         SetLocation(newLocation, false);
         SetDirection(d);
@@ -4369,9 +4388,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             if (moveClientQueue.Count > 0)
             {
                 const int cacheLength = OutgoingMobilePackets.MobileMovingPacketCacheByteLength;
-                const int width = OutgoingMobilePackets.MobileMovingPacketLength;
 
-                var mobileMovingCache = stackalloc byte[cacheLength].InitializePackets(width);
+                Span<byte> mobileMovingCache = stackalloc byte[cacheLength];
+                mobileMovingCache.Clear();
 
                 while (moveClientQueue.Count > 0)
                 {
@@ -4564,7 +4583,6 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
                 }
             }
 
-            SendIncomingPacket();
             SendIncomingPacket();
 
             OnAfterResurrect();
@@ -4860,7 +4878,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         }
         else
         {
-            m_NetState.SendDeathStatus(true);
+            m_NetState.SendDeathStatus();
 
             Warmode = false;
 
@@ -4885,8 +4903,6 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             EventSink.InvokePlayerDeath(this);
 
             ProcessDelta();
-
-            m_NetState.SendDeathStatus(false);
 
             CheckStatTimers();
         }
@@ -5887,7 +5903,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
     public virtual bool CanBeDamaged() => !m_Blessed;
 
-    public virtual void Damage(int amount, Mobile from = null, bool informMount = true)
+    public virtual void Damage(int amount, Mobile from = null, bool informMount = true, bool ignoreEvilOmen = false)
     {
         if (amount <= 0)
         {
@@ -6923,8 +6939,8 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
                 if (ns.StygianAbyss)
                 {
-                    ns.SendMobileHealthbar(m, Healthbar.Poison);
                     ns.SendMobileHealthbar(m, Healthbar.Yellow);
+                    ns.SendMobileHealthbar(m, Healthbar.Poison);
                 }
 
                 if (m.IsDeadBondedPet)
@@ -6942,6 +6958,16 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             {
                 item.SendInfoTo(ns);
             }
+        }
+
+        var range = new Rectangle2D(m_Location.X - Core.GlobalMaxUpdateRange,
+            m_Location.Y - Core.GlobalMaxUpdateRange,
+            Core.GlobalMaxUpdateRange * 2 + 1,
+            Core.GlobalMaxUpdateRange * 2 + 1);
+
+        foreach (var multi in m_Map.GetMultisInBounds(range))
+        {
+            multi.SendInfoTo(ns);
         }
     }
 
@@ -7257,6 +7283,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         }
 
         m_Location = newLocation;
+        m_Map?.OnMove(oldLocation, this);
         UpdateRegion();
 
         var box = FindBankNoCreate();
@@ -7266,14 +7293,15 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             box.Close();
         }
 
-        m_NetState?.ValidateAllTrades();
-
-        m_Map?.OnMove(oldLocation, this);
-
-        if (isTeleport && m_NetState != null && (!m_NetState.HighSeas || !NoMoveHS))
+        if (m_NetState != null)
         {
-            m_NetState.Sequence = 0;
-            m_NetState.SendMobileUpdate(this);
+            m_NetState.ValidateAllTrades();
+
+            if (isTeleport && (!m_NetState.HighSeas || !NoMoveHS))
+            {
+                m_NetState.Sequence = 0;
+                m_NetState.SendMobileUpdate(this);
+            }
         }
 
         var map = m_Map;
@@ -7353,6 +7381,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
                     m.SendOPLPacketTo(ourState);
                 }
+
                 foreach (var item in map.GetItemsInRange(newLocation, Core.GlobalMaxUpdateRange))
                 {
                     var range = item.GetUpdateRange(this);
@@ -8152,9 +8181,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         return false;
     }
 
-    public Gump FindGump<T>() where T : Gump => m_NetState?.Gumps.Find(g => g is T);
+    public BaseGump FindGump<T>() where T : BaseGump => m_NetState?.Gumps.Find(g => g is T);
 
-    public bool CloseGump<T>() where T : Gump
+    public bool CloseGump<T>() where T : BaseGump
     {
         if (m_NetState == null)
         {
@@ -8182,7 +8211,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             return false;
         }
 
-        var gumps = new List<Gump>(ns.Gumps);
+        var gumps = new List<BaseGump>(ns.Gumps);
 
         ns.ClearGumps();
 
@@ -8196,9 +8225,9 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         return true;
     }
 
-    public bool HasGump<T>() where T : Gump => FindGump<T>() != null;
+    public bool HasGump<T>() where T : BaseGump => FindGump<T>() != null;
 
-    public bool SendGump(Gump g)
+    public bool SendGump(BaseGump g)
     {
         if (m_NetState == null)
         {
@@ -8902,7 +8931,12 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             };
         }
 
-        return ret | (run ? Direction.Running : 0);
+        if (run)
+        {
+            ret |= Direction.Running;
+        }
+
+        return ret;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

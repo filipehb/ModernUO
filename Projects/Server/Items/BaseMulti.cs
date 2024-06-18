@@ -15,16 +15,14 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using ModernUO.Serialization;
 
 namespace Server.Items;
 
+[SerializationGenerator(0, false)]
 public abstract partial class BaseMulti : Item
 {
     public BaseMulti(int itemID) : base(itemID) => Movable = false;
-
-    public BaseMulti(Serial serial) : base(serial)
-    {
-    }
 
     [CommandProperty(AccessLevel.GameMaster)]
     public override int ItemID
@@ -34,13 +32,9 @@ public abstract partial class BaseMulti : Item
         {
             if (base.ItemID != value)
             {
-                var facet = Parent == null ? Map : null;
-
-                facet?.OnLeave(this);
-
+                Map?.OnLeave(this);
                 base.ItemID = value;
-
-                facet?.OnEnter(this);
+                Map?.OnEnter(this);
             }
         }
     }
@@ -70,21 +64,6 @@ public abstract partial class BaseMulti : Item
     public virtual bool AllowsRelativeDrop => false;
 
     public virtual MultiComponentList Components => MultiData.GetComponents(ItemID);
-
-    [Obsolete("Replace with calls to OnLeave and OnEnter surrounding component invalidation.", true)]
-    public virtual void RefreshComponents()
-    {
-        if (Parent == null)
-        {
-            var facet = Map;
-
-            if (facet != null)
-            {
-                facet.OnLeave(this);
-                facet.OnEnter(this);
-            }
-        }
-    }
 
     public override int GetMaxUpdateRange() => 22;
 
@@ -116,25 +95,44 @@ public abstract partial class BaseMulti : Item
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(Item item) => item.Map == Map && Contains(item.X, item.Y);
 
-    public override void Serialize(IGenericWriter writer)
+    public bool Intersects(Rectangle2D bounds)
     {
-        base.Serialize(writer);
-
-        writer.Write(1); // version
-    }
-
-    public override void Deserialize(IGenericReader reader)
-    {
-        base.Deserialize(reader);
-
-        var version = reader.ReadInt();
-
-        if (version == 0)
+        if (bounds.X > Location.X + Components.Max.X || bounds.X + bounds.Width < Location.X + Components.Min.X)
         {
-            if (ItemID >= 0x4000)
+            return false;
+        }
+
+        if (bounds.Y > Location.Y + Components.Max.Y || bounds.Y + bounds.Height < Location.Y + Components.Min.Y)
+        {
+            return false;
+        }
+
+        int minX = Math.Max(bounds.X, Location.X + Components.Min.X);
+        int maxX = Math.Min(bounds.X + bounds.Width, Location.X + Components.Max.X);
+        int minY = Math.Max(bounds.Y, Location.Y + Components.Min.Y);
+        int maxY = Math.Min(bounds.Y + bounds.Height, Location.Y + Components.Max.Y);
+
+        for (int x = minX; x <= maxX; x++)
+        {
+            for (int y = minY; y <= maxY; y++)
             {
-                ItemID -= 0x4000;
+                int offsetX = x - Location.X - Components.Min.X;
+                int offsetY = y - Location.Y - Components.Min.Y;
+
+                if (offsetX < 0 || offsetY < 0 || offsetX >= Components.Width || offsetY >= Components.Height)
+                {
+                    continue;
+                }
+
+                // TODO: Use a ref struct
+                var tiles = Components.Tiles[offsetX][offsetY];
+                if (tiles.Length > 0)
+                {
+                    return true;
+                }
             }
         }
+
+        return false;
     }
 }

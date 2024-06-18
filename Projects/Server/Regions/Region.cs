@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using Server.Collections;
 using Server.Json;
@@ -364,10 +365,11 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
                 {
                     var sector = Map.GetRealSector(x, y);
 
-                    sector.OnEnter(this, rect);
-
+                    // Region Areas are approximate and will overlap
+                    // Don't add them multiple times!
                     if (!sectors.Contains(sector))
                     {
+                        sector.OnEnter(this, rect);
                         sectors.Add(sector);
                     }
                 }
@@ -510,7 +512,7 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
         return null;
     }
 
-    public Region GetRegion(string regionName)
+    public Region GetRegion(string regionName, bool caseSensitive = true)
     {
         if (regionName == null)
         {
@@ -518,10 +520,11 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
         }
 
         var r = this;
+        var comparisonType = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
         do
         {
-            if (r.Name == regionName)
+            if (string.Equals(r.Name, regionName, comparisonType))
             {
                 return r;
             }
@@ -532,11 +535,14 @@ public class Region : IComparable<Region>, IValueLinkListNode<Region>
         return null;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsPartOf<T>() where T : Region => GetRegion<T>() != null;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsPartOf(Region region) => this == region || IsChildOf(region);
 
-    public bool IsPartOf(string regionName) => GetRegion(regionName) != null;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool IsPartOf(string regionName, bool caseSensitive = false) => GetRegion(regionName, caseSensitive) != null;
 
     public virtual bool AcceptsSpawnsFrom(Region region) =>
         AllowSpawn() && (region == this || Parent?.AcceptsSpawnsFrom(region) == true);

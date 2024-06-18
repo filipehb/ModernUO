@@ -56,7 +56,7 @@ namespace Server.Engines.MLQuests.Gumps
             AddButton(90, 95, 0xF2, 0xF1, 0);
         }
 
-        public override void OnResponse(NetState sender, RelayInfo info)
+        public override void OnResponse(NetState sender, in RelayInfo info)
         {
             switch (info.ButtonID)
             {
@@ -196,7 +196,7 @@ namespace Server.Engines.MLQuests.Gumps
             return false;
         }
 
-        private static void RaceChangeReply(NetState state, SpanReader reader, int packetLength)
+        private static void RaceChangeReply(NetState state, SpanReader reader)
         {
             if (!m_Pending.TryGetValue(state, out var raceChangeState))
             {

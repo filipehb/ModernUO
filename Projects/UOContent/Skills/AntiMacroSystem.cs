@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -107,7 +108,6 @@ public static class AntiMacroSystem
     {
         EventSink.WorldSave += OnWorldSave;
         EventSink.Logout += OnLogout;
-        EventSink.Login += OnLogin;
     }
 
     private static void OnWorldSave()
@@ -138,7 +138,7 @@ public static class AntiMacroSystem
         }
     }
 
-    private static void OnLogin(Mobile m)
+    public static void OnLogin(Mobile m)
     {
         // Stop the clear out timer
         if (_logoutCleanup?.Remove(m, out var timer) == true)

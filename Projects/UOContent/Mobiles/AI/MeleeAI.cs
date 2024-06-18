@@ -10,11 +10,6 @@ public class MeleeAI : BaseAI
 
     public override bool DoActionWander()
     {
-        if (m_Mobile.Debug)
-        {
-            m_Mobile.DebugSay("I have no combatant");
-        }
-
         if (AcquireFocusMob(m_Mobile.RangePerception, m_Mobile.FightMode, false, false, true))
         {
             if (m_Mobile.Debug)
@@ -27,6 +22,13 @@ public class MeleeAI : BaseAI
         }
         else
         {
+            if (m_Mobile.Debug)
+            {
+                m_Mobile.DebugSay("I am wandering");
+            }
+
+            m_Mobile.Warmode = false;
+
             base.DoActionWander();
         }
 
@@ -37,7 +39,7 @@ public class MeleeAI : BaseAI
     {
         var combatant = m_Mobile.Combatant;
 
-        if (combatant?.Deleted != false || combatant.Map != m_Mobile.Map || !combatant.Alive ||
+        if (combatant == null || combatant.Deleted || combatant.Map != m_Mobile.Map || !combatant.Alive ||
             combatant.IsDeadBondedPet)
         {
             if (m_Mobile.Debug)
@@ -79,6 +81,7 @@ public class MeleeAI : BaseAI
 
         if (!MoveTo(combatant, true, m_Mobile.RangeFight))
         {
+            m_Mobile.Direction = m_Mobile.GetDirectionTo(combatant);
             if (AcquireFocusMob(m_Mobile.RangePerception, m_Mobile.FightMode, false, false, true))
             {
                 if (m_Mobile.Debug)
@@ -106,6 +109,10 @@ public class MeleeAI : BaseAI
             {
                 m_Mobile.DebugSay($"I cannot find {combatant.Name}, so my guard is up");
             }
+        }
+        else if (Core.TickCount - m_Mobile.LastMoveTime > 400)
+        {
+            m_Mobile.Direction = m_Mobile.GetDirectionTo(combatant);
         }
 
         if (!m_Mobile.Controlled && !m_Mobile.Summoned && m_Mobile.CanFlee)

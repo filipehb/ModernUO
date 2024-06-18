@@ -103,7 +103,7 @@ public static class World
 
         Span<byte> buffer = stackalloc byte[length].InitializePacket();
 
-        foreach (var ns in TcpServer.Instances)
+        foreach (var ns in NetState.Instances)
         {
             if (ns.Mobile == null)
             {
@@ -131,7 +131,7 @@ public static class World
 
         Span<byte> buffer = stackalloc byte[length].InitializePacket();
 
-        foreach (var ns in TcpServer.Instances)
+        foreach (var ns in NetState.Instances)
         {
             if (ns.Mobile == null || ns.Mobile.AccessLevel < AccessLevel.GameMaster)
             {
@@ -230,7 +230,7 @@ public static class World
             try
             {
                 EventSink.InvokeWorldSavePostSnapshot(SavePath, tempPath);
-                PathUtility.MoveDirectory(tempPath, SavePath);
+                PathUtility.MoveDirectoryContents(tempPath, SavePath);
                 Directory.SetLastWriteTimeUtc(SavePath, Core.Now);
             }
             catch (Exception ex)
@@ -413,7 +413,7 @@ public static class World
         }
         else
         {
-            logger.Warning($"Attempted to call World.AddEntity with '{entity.GetType()}'. Must be a mobile or item.");
+            logger.Warning("Attempted to call World.AddEntity with '{Entity}'. Must be a mobile or item.", entity.GetType());
         }
     }
 

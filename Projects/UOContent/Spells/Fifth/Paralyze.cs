@@ -39,7 +39,7 @@ namespace Server.Spells.Fifth
 
                 if (Core.AOS)
                 {
-                    var secs = (int)(GetDamageSkill(Caster) / 10 - GetResistSkill(m) / 10);
+                    var secs = (GetDamageSkill(Caster) / 10 - GetResistSkill(m) / 10);
 
                     if (!Core.AOS)
                     {
@@ -78,8 +78,6 @@ namespace Server.Spells.Fifth
 
                 HarmfulSpell(m);
             }
-
-            FinishSequence();
         }
 
         public override void OnCast()

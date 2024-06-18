@@ -37,11 +37,7 @@ namespace Server.Saves
         {
             Delay = ServerConfiguration.GetOrUpdateSetting("autosave.saveDelay", TimeSpan.FromMinutes(5.0));
             Warning = ServerConfiguration.GetOrUpdateSetting("autosave.warningDelay", TimeSpan.Zero);
-        }
-
-        public static void Initialize()
-        {
-            SavesEnabled = true;
+            SavesEnabled = ServerConfiguration.GetOrUpdateSetting("autosave.enabled", true);
         }
 
         public static void ResetAutoSave(TimeSpan saveDelay, TimeSpan warningDelay)
@@ -95,9 +91,7 @@ namespace Server.Saves
 
         private static void BroadcastWarning()
         {
-            var s = (int)Warning.TotalSeconds;
-            var m = s / 60;
-            s %= 60;
+            var m = Math.DivRem((int)Math.Round(Warning.TotalSeconds), 60, out var s);
 
             if (m > 0 && s > 0)
             {

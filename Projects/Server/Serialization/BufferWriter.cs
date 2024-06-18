@@ -19,8 +19,8 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
-using Server.Collections;
 using Server.Text;
 
 namespace Server;
@@ -122,7 +122,11 @@ public class BufferWriter : IGenericWriter
         }
     }
 
-    public void Write(ReadOnlySpan<byte> bytes)
+    public virtual void Write(byte[] bytes) => Write(bytes.AsSpan());
+
+    public virtual void Write(byte[] bytes, int offset, int count) => Write(bytes.AsSpan(offset, count));
+
+    public virtual void Write(ReadOnlySpan<byte> bytes)
     {
         var length = bytes.Length;
 
@@ -133,17 +137,6 @@ public class BufferWriter : IGenericWriter
 
         bytes.CopyTo(_buffer.AsSpan((int)_index));
         Index += length;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Write(BitArray bitArray)
-    {
-        var byteLength = BitArray.GetByteArrayLengthFromBitLength(bitArray.Length);
-
-        ((IGenericWriter)this).WriteEncodedInt(bitArray.Length);
-        FlushIfNeeded(byteLength);
-        bitArray.CopyTo(_buffer.AsSpan((int)Index, byteLength));
-        Index += byteLength;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -300,6 +293,15 @@ public class BufferWriter : IGenericWriter
             Write(AssemblyHandler.GetTypeHash(type));
             _types?.Enqueue(type);
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(decimal value)
+    {
+        Span<int> buffer = stackalloc int[sizeof(decimal) / 4];
+        decimal.GetBits(value, buffer);
+
+        Write(MemoryMarshal.Cast<int, byte>(buffer));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

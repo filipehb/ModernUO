@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using Server.Collections;
 using Server.Logging;
 using Server.Network;
+using ModernUO.Serialization;
 
 namespace Server.Items;
 
@@ -14,46 +14,38 @@ public delegate int CheckItemGroup(Item a, Item b);
 
 public delegate void ContainerSnoopHandler(Container cont, Mobile from);
 
+[SerializationGenerator(0, false)]
 public partial class Container : Item
 {
     private ContainerData m_ContainerData;
 
-    private int m_DropSound;
-    private int m_GumpID;
-
     internal List<Item> m_Items;
-    private int m_MaxItems;
+
     private int m_TotalGold;
 
     private int m_TotalItems;
     private int m_TotalWeight;
+    private int _version;
+
+    [SerializableField(3)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private bool _liftOverride;
+
+    [SerializableFieldSaveFlag(3)]
+    private bool ShouldSerializeLiftOverride() => _liftOverride;
 
     public Container(int itemID) : base(itemID)
     {
-        m_GumpID = -1;
-        m_DropSound = -1;
-        m_MaxItems = -1;
-
-        UpdateContainerData();
-    }
-
-    public Container(Serial serial) : base(serial)
-    {
+        _gumpID = -1;
+        _dropSound = -1;
+        _maxItems = -1;
     }
 
     public static ContainerSnoopHandler SnoopHandler { get; set; }
 
     public ContainerData ContainerData
     {
-        get
-        {
-            if (m_ContainerData == null)
-            {
-                UpdateContainerData();
-            }
-
-            return m_ContainerData;
-        }
+        get => m_ContainerData ?? UpdateContainerData();
         set => m_ContainerData = value;
     }
 
@@ -69,52 +61,71 @@ public partial class Container : Item
 
             if (ItemID != oldID)
             {
-                UpdateContainerData();
+                m_ContainerData = null;
             }
         }
     }
 
-    [CommandProperty(AccessLevel.GameMaster)]
-    public int GumpID
-    {
-        get => m_GumpID == -1 ? DefaultGumpID : m_GumpID;
-        set => m_GumpID = value;
-    }
-
-    [CommandProperty(AccessLevel.GameMaster)]
-    public int DropSound
-    {
-        get => m_DropSound == -1 ? DefaultDropSound : m_DropSound;
-        set => m_DropSound = value;
-    }
-
+    [EncodedInt]
+    [SerializableProperty(0)]
     [CommandProperty(AccessLevel.GameMaster)]
     public int MaxItems
     {
-        get => m_MaxItems == -1 ? DefaultMaxItems : m_MaxItems;
+        get => _maxItems == -1 ? DefaultMaxItems : _maxItems;
         set
         {
-            m_MaxItems = value;
+            _maxItems = value;
             InvalidateProperties();
+            this.MarkDirty();
         }
     }
 
+    [SerializableFieldSaveFlag(0)]
+    private bool ShouldSerializeMaxItems() => _maxItems != -1;
+
+    [SerializableFieldDefault(0)]
+    private int MaxItemsDefaultValue() => -1;
+
+    [EncodedInt]
+    [SerializableProperty(1)]
     [CommandProperty(AccessLevel.GameMaster)]
-    public virtual int MaxWeight
+    public int GumpID
     {
-        get
+        get => _gumpID == -1 ? DefaultGumpID : _gumpID;
+        set
         {
-            if (Parent is Container container && container.MaxWeight == 0)
-            {
-                return 0;
-            }
-
-            return DefaultMaxWeight;
+            _gumpID = value;
+            this.MarkDirty();
         }
     }
 
+    [SerializableFieldSaveFlag(1)]
+    private bool ShouldSerializeGumpId() => _gumpID != -1;
+
+    [SerializableFieldDefault(1)]
+    private int GumpIDDefaultValue() => -1;
+
+    [EncodedInt]
+    [SerializableProperty(2)]
     [CommandProperty(AccessLevel.GameMaster)]
-    public bool LiftOverride { get; set; }
+    public int DropSound
+    {
+        get => _dropSound == -1 ? DefaultDropSound : _dropSound;
+        set
+        {
+            _dropSound = value;
+            this.MarkDirty();
+        }
+    }
+
+    [SerializableFieldSaveFlag(2)]
+    private bool ShouldSerializeDropSound() => _dropSound != -1;
+
+    [SerializableFieldDefault(2)]
+    private int DropSoundDefaultValue() => -1;
+
+    [CommandProperty(AccessLevel.GameMaster)]
+    public virtual int MaxWeight => Parent is Container { MaxWeight: 0 } ? 0 : DefaultMaxWeight;
 
     public virtual Rectangle2D Bounds => ContainerData.Bounds;
 
@@ -139,10 +150,7 @@ public partial class Container : Item
 
     public virtual bool IsPublicContainer => false;
 
-    public virtual void UpdateContainerData()
-    {
-        ContainerData = ContainerData.GetData(ItemID);
-    }
+    public virtual ContainerData UpdateContainerData() => ContainerData = ContainerData.GetData(ItemID);
 
     public virtual int GetDroppedSound(Item item)
     {
@@ -283,118 +291,9 @@ public partial class Container : Item
 
     private static bool GetSaveFlag(SaveFlag flags, SaveFlag toGet) => (flags & toGet) != 0;
 
-    public override void Serialize(IGenericWriter writer)
+    [AfterDeserialization]
+    private void AfterDeserialization()
     {
-        base.Serialize(writer);
-
-        writer.Write(2); // version
-
-        var flags = SaveFlag.None;
-
-        SetSaveFlag(ref flags, SaveFlag.MaxItems, m_MaxItems != -1);
-        SetSaveFlag(ref flags, SaveFlag.GumpID, m_GumpID != -1);
-        SetSaveFlag(ref flags, SaveFlag.DropSound, m_DropSound != -1);
-        SetSaveFlag(ref flags, SaveFlag.LiftOverride, LiftOverride);
-
-        writer.Write((byte)flags);
-
-        if (GetSaveFlag(flags, SaveFlag.MaxItems))
-        {
-            writer.WriteEncodedInt(m_MaxItems);
-        }
-
-        if (GetSaveFlag(flags, SaveFlag.GumpID))
-        {
-            writer.WriteEncodedInt(m_GumpID);
-        }
-
-        if (GetSaveFlag(flags, SaveFlag.DropSound))
-        {
-            writer.WriteEncodedInt(m_DropSound);
-        }
-    }
-
-    public override void Deserialize(IGenericReader reader)
-    {
-        base.Deserialize(reader);
-
-        var version = reader.ReadInt();
-
-        switch (version)
-        {
-            case 2:
-                {
-                    var flags = (SaveFlag)reader.ReadByte();
-
-                    if (GetSaveFlag(flags, SaveFlag.MaxItems))
-                    {
-                        m_MaxItems = reader.ReadEncodedInt();
-                    }
-                    else
-                    {
-                        m_MaxItems = -1;
-                    }
-
-                    if (GetSaveFlag(flags, SaveFlag.GumpID))
-                    {
-                        m_GumpID = reader.ReadEncodedInt();
-                    }
-                    else
-                    {
-                        m_GumpID = -1;
-                    }
-
-                    if (GetSaveFlag(flags, SaveFlag.DropSound))
-                    {
-                        m_DropSound = reader.ReadEncodedInt();
-                    }
-                    else
-                    {
-                        m_DropSound = -1;
-                    }
-
-                    LiftOverride = GetSaveFlag(flags, SaveFlag.LiftOverride);
-
-                    break;
-                }
-            case 1:
-                {
-                    m_MaxItems = reader.ReadInt();
-                    goto case 0;
-                }
-            case 0:
-                {
-                    if (version < 1)
-                    {
-                        m_MaxItems = GlobalMaxItems;
-                    }
-
-                    m_GumpID = reader.ReadInt();
-                    m_DropSound = reader.ReadInt();
-
-                    if (m_GumpID == DefaultGumpID)
-                    {
-                        m_GumpID = -1;
-                    }
-
-                    if (m_DropSound == DefaultDropSound)
-                    {
-                        m_DropSound = -1;
-                    }
-
-                    if (m_MaxItems == DefaultMaxItems)
-                    {
-                        m_MaxItems = -1;
-                    }
-
-                    // m_Bounds = new Rectangle2D( reader.ReadPoint2D(), reader.ReadPoint2D() );
-                    reader.ReadPoint2D();
-                    reader.ReadPoint2D();
-
-                    break;
-                }
-        }
-
         UpdateContainerData();
     }
 
@@ -416,18 +315,24 @@ public partial class Container : Item
             switch (type)
             {
                 case TotalType.Gold:
-                    m_TotalGold += delta;
-                    break;
+                    {
+                        m_TotalGold += delta;
+                        break;
+                    }
 
                 case TotalType.Items:
-                    m_TotalItems += delta;
-                    InvalidateProperties();
-                    break;
+                    {
+                        m_TotalItems += delta;
+                        InvalidateProperties();
+                        break;
+                    }
 
                 case TotalType.Weight:
-                    m_TotalWeight += delta;
-                    InvalidateProperties();
-                    break;
+                    {
+                        m_TotalWeight += delta;
+                        InvalidateProperties();
+                        break;
+                    }
             }
         }
 
@@ -462,6 +367,18 @@ public partial class Container : Item
             m_TotalItems += item.TotalItems + 1;
             m_TotalWeight += item.TotalWeight + item.PileWeight;
         }
+    }
+
+    public override void OnItemAdded(Item item)
+    {
+        base.OnItemAdded(item);
+        _version++;
+    }
+
+    public override void OnItemRemoved(Item item)
+    {
+        base.OnItemRemoved(item);
+        _version++;
     }
 
     public virtual bool OnStackAttempt(Mobile from, Item stack, Item dropped) =>
@@ -800,14 +717,7 @@ public partial class Container : Item
             throw new ArgumentNullException(nameof(grouper));
         }
 
-        using var typedItems = PooledRefList<Item>.Create();
-        foreach (var item in FindItems(recurse))
-        {
-            if (type.IsInstanceOfType(item))
-            {
-                typedItems.Add(item);
-            }
-        }
+        using var typedItems = ListItemsByType(type, recurse);
 
         var groups = new List<List<Item>>();
         var idx = 0;
@@ -815,9 +725,10 @@ public partial class Container : Item
         while (idx < typedItems.Count)
         {
             var a = typedItems[idx++];
-            var group = new List<Item>();
-
-            group.Add(a);
+            var group = new List<Item>
+            {
+                a
+            };
 
             while (idx < typedItems.Count)
             {
@@ -920,14 +831,8 @@ public partial class Container : Item
         for (var i = 0; i < types.Length; ++i)
         {
             var type = types[i];
-            using var typedItems = PooledRefList<Item>.Create();
-            foreach (var item in FindItems(recurse))
-            {
-                if (type.IsInstanceOfType(item))
-                {
-                    typedItems.Add(item);
-                }
-            }
+
+            using var typedItems = ListItemsByType(type, recurse);
 
             var groups = new List<List<Item>>();
             var idx = 0;
@@ -935,9 +840,10 @@ public partial class Container : Item
             while (idx < typedItems.Count)
             {
                 var a = typedItems[idx++];
-                var group = new List<Item>();
-
-                group.Add(a);
+                var group = new List<Item>
+                {
+                    a
+                };
 
                 while (idx < typedItems.Count)
                 {
@@ -1043,19 +949,20 @@ public partial class Container : Item
 
         for (var i = 0; i < types.Length; ++i)
         {
-            var typedItems = CollectionsMarshal.AsSpan(FindItemsByType(types[i], recurse));
+            using var typedItems = ListItemsByType(types[i], recurse);
 
             var groups = new List<List<Item>>();
             var idx = 0;
 
-            while (idx < typedItems.Length)
+            while (idx < typedItems.Count)
             {
                 var a = typedItems[idx++];
-                var group = new List<Item>();
+                var group = new List<Item>
+                {
+                    a
+                };
 
-                group.Add(a);
-
-                while (idx < typedItems.Length)
+                while (idx < typedItems.Count)
                 {
                     var b = typedItems[idx];
                     var v = grouper(a, b);
@@ -1146,16 +1053,19 @@ public partial class Container : Item
             throw new ArgumentException("length of types and amounts must match");
         }
 
-        var items = new List<Item>[types.Length];
+        var items = new Item[types.Length][];
         var totals = new int[types.Length];
 
         for (var i = 0; i < types.Length; ++i)
         {
-            items[i] = FindItemsByType(types[i], recurse);
+            using var typedItems = ListItemsByType(types[i], recurse);
 
-            for (var j = 0; j < items[i].Count; ++j)
+            items[i] = new Item[typedItems.Count];
+
+            for (var j = 0; j < typedItems.Count; ++j)
             {
-                totals[i] += items[i][j].Amount;
+                items[i][j] = typedItems[j];
+                totals[i] += typedItems[j].Amount;
             }
 
             if (totals[i] < amounts[i])
@@ -1168,7 +1078,7 @@ public partial class Container : Item
         {
             var need = amounts[i];
 
-            for (var j = 0; j < items[i].Count; ++j)
+            for (var j = 0; j < items[i].Length; ++j)
             {
                 var item = items[i][j];
 
@@ -1201,19 +1111,19 @@ public partial class Container : Item
             throw new ArgumentException("length of types and amounts must match");
         }
 
-        var items = new List<Item>[types.Length];
+        var items = new Item[types.Length][];
         var totals = new int[types.Length];
 
         for (var i = 0; i < types.Length; ++i)
         {
-            var itemList = items[i] = new List<Item>();
-            foreach (var item in FindItems())
+            using var typedItems = ListItemsByType(types[i], recurse);
+
+            items[i] = new Item[typedItems.Count];
+
+            for (var j = 0; j < typedItems.Count; ++j)
             {
-                if (types[i].IsInstanceOfType(item))
-                {
-                    totals[i] += item.Amount;
-                    itemList.Add(item);
-                }
+                items[i][j] = typedItems[j];
+                totals[i] += typedItems[j].Amount;
             }
 
             if (totals[i] < amounts[i])
@@ -1226,7 +1136,7 @@ public partial class Container : Item
         {
             var need = amounts[i];
 
-            for (var j = 0; j < items[i].Count; ++j)
+            for (var j = 0; j < items[i].Length; ++j)
             {
                 var item = items[i][j];
 
@@ -1255,20 +1165,17 @@ public partial class Container : Item
     public bool ConsumeTotal(Type type, int amount = 1, bool recurse = true, OnItemConsumed callback = null)
     {
         var total = 0;
-        using var items = PooledRefQueue<Item>.Create();
+
+        using var typedItems = ListItemsByType(type, recurse);
 
         // First pass, compute total
-        foreach (var item in FindItems(recurse))
+        foreach (var item in typedItems)
         {
-            if (type.IsInstanceOfType(item))
-            {
-                items.Enqueue(item);
+            total += item.Amount;
 
-                total += item.Amount;
-                if (total >= amount)
-                {
-                    break;
-                }
+            if (total >= amount)
+            {
+                break;
             }
         }
 
@@ -1277,10 +1184,8 @@ public partial class Container : Item
         {
             var need = amount;
 
-            while (items.Count > 0)
+            foreach (var item in typedItems)
             {
-                var item = items.Dequeue();
-
                 var theirAmount = item.Amount;
 
                 if (theirAmount < need)
@@ -1308,6 +1213,7 @@ public partial class Container : Item
         var consumed = 0;
 
         using var toDelete = PooledRefQueue<Item>.Create();
+
         RecurseConsumeUpTo(this, type, amount, recurse, ref consumed, toDelete);
 
         while (toDelete.Count > 0)
@@ -1368,14 +1274,7 @@ public partial class Container : Item
 
         var best = 0;
 
-        using var typedItems = PooledRefList<Item>.Create();
-        foreach (var item in FindItems(recurse))
-        {
-            if (type.IsInstanceOfType(item))
-            {
-                typedItems.Add(item);
-            }
-        }
+        using var typedItems = ListItemsByType(type, recurse);
 
         var groups = new List<List<Item>>();
         var idx = 0;
@@ -1437,12 +1336,12 @@ public partial class Container : Item
 
         var best = 0;
 
-        var typedItems = CollectionsMarshal.AsSpan(FindItemsByType(types, recurse));
+        var typedItems = ListItemsByType(types, recurse);
 
         var groups = new List<List<Item>>();
         var idx = 0;
 
-        while (idx < typedItems.Length)
+        while (idx < typedItems.Count)
         {
             var a = typedItems[idx++];
             var group = new List<Item>
@@ -1450,7 +1349,7 @@ public partial class Container : Item
                 a
             };
 
-            while (idx < typedItems.Length)
+            while (idx < typedItems.Count)
             {
                 var b = typedItems[idx];
                 var v = grouper(a, b);
@@ -1474,6 +1373,7 @@ public partial class Container : Item
         {
             var items = groups[j].ToArray();
             var total = 0;
+
             foreach (var item in items)
             {
                 total += item.Amount;
@@ -1499,19 +1399,20 @@ public partial class Container : Item
 
         for (var i = 0; i < types.Length; ++i)
         {
-            var typedItems = CollectionsMarshal.AsSpan(FindItemsByType(types[i], recurse));
+            using var typedItems = ListItemsByType(types[i], recurse);
 
             var groups = new List<List<Item>>();
             var idx = 0;
 
-            while (idx < typedItems.Length)
+            while (idx < typedItems.Count)
             {
                 var a = typedItems[idx++];
-                var group = new List<Item>();
+                var group = new List<Item>
+                {
+                    a
+                };
 
-                group.Add(a);
-
-                while (idx < typedItems.Length)
+                while (idx < typedItems.Count)
                 {
                     var b = typedItems[idx];
                     var v = grouper(a, b);
@@ -1554,6 +1455,7 @@ public partial class Container : Item
     public int GetAmount(Type type, bool recurse = true)
     {
         var total = 0;
+
         foreach (var item in FindItems(recurse))
         {
             if (type.IsInstanceOfType(item))
@@ -1568,6 +1470,7 @@ public partial class Container : Item
     public int GetAmount(Type[] types, bool recurse = true)
     {
         var total = 0;
+
         foreach (var item in FindItems(recurse))
         {
             if (item.InTypeList(types))
@@ -1578,35 +1481,6 @@ public partial class Container : Item
 
         return total;
     }
-
-    public List<Item> FindItemsByType(Type type, bool recurse = true)
-    {
-        var items = new List<Item>();
-        foreach (var item in FindItems(recurse))
-        {
-            if (type.IsInstanceOfType(item))
-            {
-                items.Add(item);
-            }
-        }
-
-        return items;
-    }
-
-    public List<Item> FindItemsByType(Type[] types, bool recurse = true)
-    {
-        var items = new List<Item>();
-        foreach (var item in FindItems(recurse))
-        {
-            if (item.InTypeList(types))
-            {
-                items.Add(item);
-            }
-        }
-
-        return items;
-    }
-
     public Item FindItemByType(Type type, bool recurse = true)
     {
         foreach (var item in FindItems(recurse))
@@ -1659,16 +1533,6 @@ public partial class Container : Item
         }
 
         return null;
-    }
-
-    [Flags]
-    private enum SaveFlag : byte
-    {
-        None = 0x00000000,
-        MaxItems = 0x00000001,
-        GumpID = 0x00000002,
-        DropSound = 0x00000004,
-        LiftOverride = 0x00000008
     }
 
     private struct ItemStackEntry

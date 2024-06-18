@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-using Microsoft.Toolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
 using Server.Commands;
 using Server.Factions;
 using Server.Gumps;
@@ -688,7 +688,7 @@ namespace Server.Misc
                 AddLabel(45, 85, 0x34, "Close");
             }
 
-            public override void OnResponse(NetState sender, RelayInfo info)
+            public override void OnResponse(NetState sender, in RelayInfo info)
             {
                 switch (info.ButtonID)
                 {

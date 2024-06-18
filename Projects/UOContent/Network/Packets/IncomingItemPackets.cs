@@ -17,6 +17,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using Server.Items;
+using Server.Mobiles;
 
 namespace Server.Network;
 
@@ -25,13 +26,13 @@ public static class IncomingItemPackets
     public static unsafe void Configure()
     {
         IncomingPackets.Register(0x07, 7, true, &LiftReq);
-        IncomingPackets.Register(new ContainerGridPacketHandler(0x08, 14, true, &DropReq));
+        IncomingPackets.Register(new ContainerGridPacketHandler(0x08, 14, &DropReq));
         IncomingPackets.Register(0x13, 10, true, &EquipReq);
         IncomingPackets.Register(0xEC, 0, false, &EquipMacro);
         IncomingPackets.Register(0xED, 0, false, &UnequipMacro);
     }
 
-    public static void LiftReq(NetState state, SpanReader reader, int packetLength)
+    public static void LiftReq(NetState state, SpanReader reader)
     {
         var serial = (Serial)reader.ReadUInt32();
         int amount = reader.ReadUInt16();
@@ -40,7 +41,7 @@ public static class IncomingItemPackets
         state.Mobile.Lift(item, amount, out _, out _);
     }
 
-    public static void EquipReq(NetState state, SpanReader reader, int packetLength)
+    public static void EquipReq(NetState state, SpanReader reader)
     {
         var from = state.Mobile;
         var item = from.Holding;
@@ -65,7 +66,7 @@ public static class IncomingItemPackets
         item.ClearBounce();
     }
 
-    public static void DropReq(NetState state, SpanReader reader, int packetLength)
+    public static void DropReq(NetState state, SpanReader reader)
     {
         reader.ReadInt32(); // serial, ignored
         int x = reader.ReadInt16();
@@ -108,7 +109,7 @@ public static class IncomingItemPackets
         }
     }
 
-    public static void EquipMacro(NetState state, SpanReader reader, int packetLength)
+    public static void EquipMacro(NetState state, SpanReader reader)
     {
         int count = reader.ReadByte();
         var serialList = new List<Serial>(count);
@@ -117,10 +118,10 @@ public static class IncomingItemPackets
             serialList.Add((Serial)reader.ReadUInt32());
         }
 
-        EventSink.InvokeEquipMacro(state.Mobile, serialList);
+        PlayerMobile.EquipMacro(state.Mobile, serialList);
     }
 
-    public static void UnequipMacro(NetState state, SpanReader reader, int packetLength)
+    public static void UnequipMacro(NetState state, SpanReader reader)
     {
         int count = reader.ReadByte();
         var layers = new List<Layer>(count);
@@ -129,6 +130,6 @@ public static class IncomingItemPackets
             layers.Add((Layer)reader.ReadUInt16());
         }
 
-        EventSink.InvokeUnequipMacro(state.Mobile, layers);
+        PlayerMobile.UnequipMacro(state.Mobile, layers);
     }
 }

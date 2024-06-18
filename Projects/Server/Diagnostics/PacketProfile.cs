@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Server.Diagnostics;
@@ -43,7 +42,6 @@ public class PacketSendProfile : BasePacketProfile
 
     public static IEnumerable<PacketSendProfile> Profiles => _profiles.Values;
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public static PacketSendProfile Acquire(int packetId)
     {
         if (!_profiles.TryGetValue(packetId, out var prof))
@@ -78,7 +76,6 @@ public class PacketReceiveProfile : BasePacketProfile
 
     public static IEnumerable<PacketReceiveProfile> Profiles => _profiles.Values;
 
-    [MethodImpl(MethodImplOptions.Synchronized)]
     public static PacketReceiveProfile Acquire(int packetId)
     {
         if (!_profiles.TryGetValue(packetId, out var prof))

@@ -67,7 +67,7 @@ namespace Server.Multis
 
             m_RelativeBanLocation = BaseBanLocation;
 
-            UpdateRegion();
+            // UpdateRegion();
 
             if (owner != null)
             {
@@ -716,7 +716,9 @@ namespace Server.Multis
             return fromSecures + fromVendors + fromLockdowns + fromMovingCrate;
         }
 
-        public bool InRange(Point2D from, int range)
+        public override bool InRange(Point3D from, int range) => InRange(new Point2D(from), range);
+
+        public override bool InRange(Point2D from, int range)
         {
             if (Region == null)
             {
@@ -725,7 +727,6 @@ namespace Server.Multis
 
             foreach (var rect in Region.Area)
             {
-                // TODO: Convert this to 3D - https://github.com/modernuo/ModernUO/issues/29
                 if (from.X >= rect.Start.X - range && from.Y >= rect.Start.Y - range && from.X < rect.End.X + range && from.Y < rect.End.Y + range)
                 {
                     return true;
@@ -1401,7 +1402,7 @@ namespace Server.Multis
                 return null;
             }
 
-            foreach (var house in map.GetMultisAt<BaseHouse>(loc))
+            foreach (var house in map.GetMultisInSector<BaseHouse>(loc))
             {
                 if (house.IsInside(loc, height))
                 {
@@ -1482,8 +1483,8 @@ namespace Server.Multis
 
             var mcl = Components;
 
-            var x = p.X - (X + mcl.Min.X);
-            var y = p.Y - (Y + mcl.Min.Y);
+            var x = p.X - X - mcl.Min.X;
+            var y = p.Y - Y - mcl.Min.Y;
 
             if (x < 0 || x >= mcl.Width || y < 0 || y >= mcl.Height)
             {
@@ -1495,6 +1496,7 @@ namespace Server.Multis
                 return true;
             }
 
+            // TODO: Use ref struct
             var tiles = mcl.Tiles[x][y];
 
             for (var j = 0; j < tiles.Length; ++j)
@@ -2239,22 +2241,8 @@ namespace Server.Multis
 
                 if (HasRentedVendors)
                 {
-                    /* You are about to be traded a home that has active vendor contracts.
-                     * While there are active vendor contracts in this house, you
-                     * <strong>cannot</strong> demolish <strong>OR</strong> customize the home.
-                     * When you accept this house, you also accept landlordship for every
-                     * contract vendor in the house.
-                     */
                     to.SendGump(
-                        new WarningGump(
-                            1060635,
-                            30720,
-                            1062487,
-                            32512,
-                            420,
-                            280,
-                            okay => ConfirmTransfer_Callback(to, okay, from)
-                        )
+                        new TradeHouseWarningGump(okay => ConfirmTransfer_Callback(to, okay, from))
                     );
                 }
                 else
@@ -2262,6 +2250,24 @@ namespace Server.Multis
                     to.CloseGump<HouseTransferGump>();
                     to.SendGump(new HouseTransferGump(from, to, this));
                 }
+            }
+        }
+
+        private class TradeHouseWarningGump : StaticWarningGump<TradeHouseWarningGump>
+        {
+            /*
+             * You are about to be traded a home that has active vendor contracts.
+             * While there are active vendor contracts in this house, you
+             * <strong>cannot</strong> demolish <strong>OR</strong> customize the home.
+             * When you accept this house, you also accept landlordship for every contract vendor in the house.
+             */
+            public override int StaticLocalizedContent => 1062487;
+
+            public override int Width => 420;
+            public override int Height => 280;
+
+            public TradeHouseWarningGump(Action<bool> callback) : base(callback)
+            {
             }
         }
 
@@ -3734,7 +3740,7 @@ namespace Server.Multis
                     ref ySouth
                 );
 
-                list.Add(1061112, Utility.FixHtml(houseName)); // House Name: ~1_val~
+                list.Add(1061112, houseName.FixHtml()); // House Name: ~1_val~
                 list.Add(1061113, owner);                      // Owner: ~1_val~
                 if (valid)
                 {

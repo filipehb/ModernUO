@@ -114,11 +114,11 @@ public partial class Guildstone : Item, IAddon, IChoppable
             }
 
             // list.Add( 1060802, Utility.FixHtml( name ) ); // Guild name: ~1_val~
-            list.Add(1060802, $"{Utility.FixHtmlFormattable(name)} [{Utility.FixHtmlFormattable(abbr)}]");
+            list.Add(1060802, $"{name.FixHtmlFormattable()} [{abbr.FixHtmlFormattable()}]");
         }
         else if (_guildName != null && _guildAbbrev != null)
         {
-            list.Add(1060802, $"{Utility.FixHtmlFormattable(_guildName)} [{Utility.FixHtmlFormattable(_guildAbbrev)}]");
+            list.Add(1060802, $"{_guildName.FixHtmlFormattable()} [{_guildAbbrev.FixHtmlFormattable()}]");
         }
     }
 
@@ -184,7 +184,7 @@ public partial class Guildstone : Item, IAddon, IChoppable
                 targetState.Leaving = guildState.Leaving;
             }
 
-            _guild.Remove(_guild.Accepted, from);
+            _guild.Accepted.Remove(from);
             _guild.AddMember(from);
 
             GuildGump.EnsureClosed(from);
@@ -254,11 +254,11 @@ public partial class GuildstoneDeed : Item
             }
 
             // list.Add( 1060802, Utility.FixHtml( name ) ); // Guild name: ~1_val~
-            list.Add(1060802, $"{Utility.FixHtmlFormattable(name)} [{Utility.FixHtmlFormattable(abbr)}]");
+            list.Add(1060802, $"{name.FixHtmlFormattable()} [{abbr.FixHtmlFormattable()}]");
         }
         else if (_guildName != null && _guildAbbrev != null)
         {
-            list.Add(1060802, $"{Utility.FixHtmlFormattable(_guildName)} [{Utility.FixHtmlFormattable(_guildAbbrev)}]");
+            list.Add(1060802, $"{_guildName.FixHtmlFormattable()} [{_guildAbbrev.FixHtmlFormattable()}]");
         }
     }
 
@@ -305,7 +305,7 @@ public partial class GuildstoneDeed : Item
 
             addon.MoveToWorld(loc, from.Map);
 
-            house.Add(house.Addons, addon);
+            house.Addons.Add(addon);
             Delete();
         }
         else

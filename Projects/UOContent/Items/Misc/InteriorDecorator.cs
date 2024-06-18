@@ -98,7 +98,7 @@ public partial class InteriorDecorator : Item
             AddHtmlLocalized(90, 150, 70, 40, 1018325); // Down
         }
 
-        public override void OnResponse(NetState sender, RelayInfo info)
+        public override void OnResponse(NetState sender, in RelayInfo info)
         {
             var command = info.ButtonID switch
             {
@@ -328,13 +328,10 @@ public partial class InteriorDecorator : Item
                 return int.MinValue;
             }
 
-            var tiles = map.Tiles.GetStaticTiles(item.X, item.Y, true);
-
             var z = int.MinValue;
 
-            for (var i = 0; i < tiles.Length; ++i)
+            foreach (var tile in map.Tiles.GetStaticAndMultiTiles(item.X, item.Y))
             {
-                var tile = tiles[i];
                 var id = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
 
                 var top = tile.Z; // Confirmed : no height checks here

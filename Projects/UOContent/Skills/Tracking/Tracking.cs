@@ -23,7 +23,7 @@ namespace Server.SkillHandlers
             SkillInfo.Table[(int)SkillName.Tracking].Callback = OnUse;
         }
 
-        public static void QuestArrow(NetState state, SpanReader reader, int packetLength)
+        public static void QuestArrow(NetState state, SpanReader reader)
         {
             if (state.Mobile is PlayerMobile from)
             {
@@ -124,7 +124,7 @@ namespace Server.SkillHandlers
             AddHtmlLocalized(320, 90, 100, 20, 1018090); // Players
         }
 
-        public override void OnResponse(NetState state, RelayInfo info)
+        public override void OnResponse(NetState state, in RelayInfo info)
         {
             if (info.ButtonID >= 1 && info.ButtonID <= 4)
             {
@@ -323,7 +323,7 @@ namespace Server.SkillHandlers
                 chance = 100;
             }
 
-            return chance > Utility.Random(100);
+            return chance >= 100 || chance > Utility.Random(100);
         }
 
         private static bool IsValidMobileType(Mobile m, int type) =>
@@ -335,7 +335,7 @@ namespace Server.SkillHandlers
                 _ => m.Player
             };
 
-        public override void OnResponse(NetState state, RelayInfo info)
+        public override void OnResponse(NetState state, in RelayInfo info)
         {
             var index = info.ButtonID - 1;
 

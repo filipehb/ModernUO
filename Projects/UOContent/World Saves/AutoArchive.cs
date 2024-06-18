@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Microsoft.Toolkit.HighPerformance;
+using CommunityToolkit.HighPerformance;
 using Server.Compression;
 using Server.Logging;
 
@@ -97,7 +97,7 @@ namespace Server.Saves
 
             Directory.CreateDirectory(AutomaticBackupPath);
             var backupPath = Path.Combine(AutomaticBackupPath, Utility.GetTimeStamp());
-            PathUtility.MoveDirectory(args.OldSavePath, backupPath);
+            PathUtility.MoveDirectoryContents(args.OldSavePath, backupPath);
 
             logger.Information("Created backup at {Path}", backupPath);
 
@@ -150,7 +150,7 @@ namespace Server.Saves
                 Directory.Delete(savePath, true);
                 var dirInfo = new DirectoryInfo(folder);
                 logger.Information("Restoring backup {Directory}", dirInfo.Name);
-                PathUtility.MoveDirectory(folder, savePath);
+                PathUtility.MoveDirectoryContents(folder, savePath);
                 break;
             }
 
@@ -218,7 +218,7 @@ namespace Server.Saves
             }
         }
 
-        public static async void AutoArchiveLocally()
+        public static void AutoArchiveLocally()
         {
             var date = Core.Now;
 
@@ -330,12 +330,11 @@ namespace Server.Saves
 
                 if (archiveCreated)
                 {
-                    var elapsed = stopWatch.Elapsed.TotalSeconds;
                     logger.Information(
                         "Created {Period} archive at {Path} ({Elapsed:F2} seconds)",
                         archivePeriodStrLower,
                         archiveFilePath,
-                        elapsed
+                        stopWatch.Elapsed.TotalSeconds
                     );
 
                     var i = minimum;

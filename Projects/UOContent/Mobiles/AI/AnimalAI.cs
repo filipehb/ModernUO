@@ -52,11 +52,12 @@ public class AnimalAI : BaseAI
     {
         var combatant = m_Mobile.Combatant;
 
-        if (combatant?.Deleted != false || combatant.Map != m_Mobile.Map)
+        if (combatant == null || combatant.Deleted || combatant.Map != m_Mobile.Map || !combatant.Alive ||
+            combatant.IsDeadBondedPet)
         {
             if (m_Mobile.Debug)
             {
-                m_Mobile.DebugSay("My combatant is gone..");
+                m_Mobile.DebugSay("My combatant is gone!");
             }
 
             Action = ActionType.Wander;
@@ -80,6 +81,10 @@ public class AnimalAI : BaseAI
             {
                 m_Mobile.DebugSay($"I should be closer to {combatant.Name}");
             }
+        }
+        else if (Core.TickCount - m_Mobile.LastMoveTime > 400)
+        {
+            m_Mobile.Direction = m_Mobile.GetDirectionTo(combatant);
         }
 
         if (!m_Mobile.Controlled && !m_Mobile.Summoned && m_Mobile.CanFlee)

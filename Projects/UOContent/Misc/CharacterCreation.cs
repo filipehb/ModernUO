@@ -15,8 +15,8 @@ public static class CharacterCreation
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(CharacterCreation));
 
     // Allowed skills that are not race or era specific
-    private static readonly HashSet<SkillName> _allowedStartingSkills = new()
-    {
+    private static readonly HashSet<SkillName> _allowedStartingSkills =
+    [
         SkillName.Alchemy,
         SkillName.Anatomy,
         SkillName.AnimalLore,
@@ -72,12 +72,88 @@ public static class CharacterCreation
         SkillName.Tracking,
         SkillName.Veterinary,
         SkillName.Wrestling
-    };
+    ];
 
     private static readonly TimeSpan BadStartMessageDelay = TimeSpan.FromSeconds(3.5);
 
-    private static readonly CityInfo _newHavenInfo =
-        new("New Haven", "The Bountiful Harvest Inn", 3503, 2574, 14, Map.Trammel);
+    public static readonly CityInfo[] OldHavenStartingCities =
+    [
+        new CityInfo("Haven", "The Bountiful Harvest Inn", 3677, 2625, 0, Map.Trammel),
+        new CityInfo("Britain", "Sweet Dreams Inn", 1075074, 1496, 1628, 10, Map.Trammel),
+        new CityInfo("Magincia", "The Great Horns Tavern", 1075077, 3734, 2222, 20, Map.Trammel),
+    ];
+
+    public static readonly CityInfo[] FeluccaStartingCities =
+    [
+        new CityInfo("Yew", "The Empath Abbey", 1075072, 633, 858, 0, Map.Felucca),
+        new CityInfo("Minoc", "The Barnacle", 1075073, 2476, 413, 15, Map.Felucca),
+        new CityInfo("Britain", "Sweet Dreams Inn", 1075074, 1496, 1628, 10, Map.Felucca),
+        new CityInfo("Moonglow", "The Scholars Inn", 1075075, 4408, 1168, 0, Map.Felucca),
+        new CityInfo("Trinsic", "The Traveler's Inn", 1075076, 1845, 2745, 0, Map.Felucca),
+        new CityInfo("Magincia", "The Great Horns Tavern", 1075077, 3734, 2222, 20, Map.Felucca),
+        new CityInfo("Jhelom", "The Mercenary Inn", 1075078, 1374, 3826, 0, Map.Felucca),
+        new CityInfo("Skara Brae", "The Falconer's Inn", 1075079, 618, 2234, 0, Map.Felucca),
+        new CityInfo("Vesper", "The Ironwood Inn", 1075080, 2771, 976, 0, Map.Felucca)
+    ];
+
+    public static readonly CityInfo[] TrammelStartingCities =
+    [
+        new CityInfo("Yew", "The Empath Abbey", 1075072, 633, 858, 0, Map.Trammel),
+        new CityInfo("Minoc", "The Barnacle", 1075073, 2476, 413, 15, Map.Trammel),
+        new CityInfo("Moonglow", "The Scholars Inn", 1075075, 4408, 1168, 0, Map.Trammel),
+        new CityInfo("Trinsic", "The Traveler's Inn", 1075076, 1845, 2745, 0, Map.Trammel),
+        new CityInfo("Jhelom", "The Mercenary Inn", 1075078, 1374, 3826, 0, Map.Trammel),
+        new CityInfo("Skara Brae", "The Falconer's Inn", 1075079, 618, 2234, 0, Map.Trammel),
+        new CityInfo("Vesper", "The Ironwood Inn", 1075080, 2771, 976, 0, Map.Trammel),
+    ];
+
+    public static readonly CityInfo[] NewHavenStartingCities =
+    [
+        new CityInfo("New Haven", "The Bountiful Harvest Inn", 1150168, 3503, 2574, 14, Map.Trammel),
+        new CityInfo("Britain", "The Wayfarer's Inn", 1075074, 1602, 1591, 20, Map.Trammel)
+        // Magincia removed because it burned down.
+    ];
+
+    public static readonly CityInfo[] StartingCitiesSA =
+    [
+        new CityInfo("Royal City", "Royal City Inn", 1150169, 738, 3486, -19, Map.TerMur)
+    ];
+
+    private static CityInfo[] _availableStartingCities;
+
+    public static CityInfo[] GetStartingCities() =>
+        _availableStartingCities ??= ConstructAvailableStartingCities();
+
+    private static CityInfo[] ConstructAvailableStartingCities()
+    {
+        var pre6000ClientSupport = TileMatrix.Pre6000ClientSupport;
+        var availableMaps = ExpansionInfo.CoreExpansion.MapSelectionFlags;
+        var trammelAvailable = availableMaps.Includes(MapSelectionFlags.Trammel);
+        var terMerAvailable = availableMaps.Includes(MapSelectionFlags.TerMur);
+
+        if (trammelAvailable)
+        {
+            if (pre6000ClientSupport)
+            {
+                return [..OldHavenStartingCities, ..TrammelStartingCities];
+            }
+
+            if (terMerAvailable)
+            {
+                return [..NewHavenStartingCities, ..TrammelStartingCities, ..StartingCitiesSA];
+            }
+
+            return [..NewHavenStartingCities, ..TrammelStartingCities];
+        }
+
+        if (availableMaps.Includes(MapSelectionFlags.Felucca))
+        {
+            return FeluccaStartingCities;
+        }
+
+        logger.Error("No starting cities are available.");
+        return [];
+    }
 
     public static void Initialize()
     {
@@ -123,7 +199,6 @@ public static class CharacterCreation
 
     private static void EventSink_CharacterCreated(CharacterCreatedEventArgs args)
     {
-        var youngEnabled = ServerConfiguration.GetSetting("rp.young.enable", Core.AOS);
         if (!VerifyProfession(args.Profession))
         {
             args.Profession = 0;
@@ -149,61 +224,69 @@ public static class CharacterCreation
         newChar.Player = true;
         newChar.AccessLevel = args.Account.AccessLevel;
         newChar.Female = args.Female;
-        newChar.Race = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
         newChar.Hue = newChar.Race.ClipSkinHue(args.Hue & 0x3FFF) | 0x8000;
         newChar.Hunger = 20;
 
-        var young = false;
-
-        if (newChar is PlayerMobile pm)
-        {
-            pm.Profession = args.Profession;
-
-            if (!youngEnabled)
-            {
-                ((Account)pm.Account).Young = false;
-            }
-
-            if (pm.AccessLevel == AccessLevel.Player && ((Account)pm.Account).Young)
-            {
-                young = pm.Young = true;
-            }
-        }
-
         SetName(newChar, args.Name);
-
         newChar.AddBackpack();
 
-        SetStats(newChar, state, args.Stats, args.Profession);
-        SetSkills(newChar, args.Skills, args.Profession, args.ShirtHue, args.PantsHue);
-
-        var race = newChar.Race;
-
-        if (race.ValidateHair(newChar, args.HairID))
+        if (newChar.AccessLevel == AccessLevel.Player)
         {
-            newChar.HairItemID = args.HairID;
-            newChar.HairHue = race.ClipHairHue(args.HairHue & 0x3FFF);
+            var race = Core.Expansion >= args.Race.RequiredExpansion ? args.Race : Race.DefaultRace;
+            newChar.Race = race;
+
+            if (newChar is PlayerMobile pm)
+            {
+                pm.Profession = args.Profession;
+
+                if (((Account)pm.Account).Young)
+                {
+                    pm.Young = true;
+
+                    newChar.BankBox.DropItem(new NewPlayerTicket
+                    {
+                        Owner = newChar
+                    });
+                }
+            }
+
+            SetStats(newChar, state, args.Stats, args.Profession);
+            SetSkills(newChar, args.Skills, args.Profession, args.ShirtHue, args.PantsHue);
+
+            if (race.ValidateHair(newChar, args.HairID))
+            {
+                newChar.HairItemID = args.HairID;
+                newChar.HairHue = race.ClipHairHue(args.HairHue & 0x3FFF);
+            }
+
+            if (race.ValidateFacialHair(newChar, args.BeardID))
+            {
+                newChar.FacialHairItemID = args.BeardID;
+                newChar.FacialHairHue = race.ClipHairHue(args.BeardHue & 0x3FFF);
+            }
+
+            if (TestCenter.Enabled)
+            {
+                TestCenter.FillBankbox(newChar);
+            }
+        }
+        else
+        {
+            newChar.Str = 100;
+            newChar.Int = 100;
+            newChar.Dex = 100;
+
+            for (var i = 0; i < newChar.Skills.Length; i++)
+            {
+                newChar.Skills[i].BaseFixedPoint = 1000;
+            }
+
+            newChar.Race = Race.Human;
+            newChar.Blessed = true;
+            newChar.AddItem(new StaffRobe(newChar.AccessLevel));
         }
 
-        if (race.ValidateFacialHair(newChar, args.BeardID))
-        {
-            newChar.FacialHairItemID = args.BeardID;
-            newChar.FacialHairHue = race.ClipHairHue(args.BeardHue & 0x3FFF);
-        }
-
-        if (TestCenter.Enabled)
-        {
-            TestCenter.FillBankbox(newChar);
-        }
-
-        if (young)
-        {
-            var ticket = new NewPlayerTicket();
-            ticket.Owner = newChar;
-            newChar.BankBox.DropItem(ticket);
-        }
-
-        var city = GetStartLocation(args, young);
+        var city = GetStartLocation(args);
         newChar.MoveToWorld(city.Location, city.Map);
 
         logger.Information(
@@ -222,22 +305,26 @@ public static class CharacterCreation
     public static bool VerifyProfession(int profession) =>
         profession >= 0 && profession < ProfessionInfo.Professions.Length;
 
-    private static CityInfo GetStartLocation(CharacterCreatedEventArgs args, bool isYoung)
+    private static CityInfo GetStartLocation(CharacterCreatedEventArgs args)
     {
-        // We don't get the actual client version until after character creation
-        var post6000Supported = !TileMatrix.Pre6000ClientSupport;
         var availableMaps = ExpansionInfo.CoreExpansion.MapSelectionFlags;
-
-        if (Core.ML && post6000Supported && availableMaps.Includes(MapSelectionFlags.Trammel))
-        {
-            return _newHavenInfo;
-        }
-
-        var useHaven = isYoung;
-
-        var flags = args.State?.Flags ?? ClientFlags.None;
         var m = args.Mobile;
 
+        if (m.AccessLevel > AccessLevel.Player)
+        {
+            var map = availableMaps.Includes(MapSelectionFlags.Felucca) ? Map.Felucca : Map.Trammel;
+            if (availableMaps.Includes(MapSelectionFlags.Felucca))
+            {
+                return new CityInfo("Green Acres", "Green Acres", 5445, 1153, 0, map);
+            }
+        }
+
+        if (Core.SA)
+        {
+            return args.City;
+        }
+
+        var flags = args.State?.Flags ?? ClientFlags.None;
         var profession = ProfessionInfo.Professions[args.Profession];
 
         switch (profession?.Name.ToLowerInvariant())
@@ -249,8 +336,6 @@ public static class CharacterCreation
                         return new CityInfo("Umbra", "Mardoth's Tower", 2114, 1301, -50, Map.Malas);
                     }
 
-                    useHaven = true;
-
                     /*
                      * Unfortunately you are playing on a *NON-Age-Of-Shadows* game
                      * installation and cannot be transported to Malas.
@@ -259,17 +344,11 @@ public static class CharacterCreation
                      * Haven on the Trammel facet.
                      */
                     Timer.StartTimer(BadStartMessageDelay, () => m.SendLocalizedMessage(1062205));
-
-                    break;
+                    return GetStartingCities()[0];
                 }
             case "paladin":
                 {
-                    if (availableMaps.Includes(MapSelectionFlags.Trammel) && post6000Supported)
-                    {
-                        return _newHavenInfo;
-                    }
-
-                    break;
+                    return GetStartingCities()[0];
                 }
             case "samurai":
                 {
@@ -283,8 +362,6 @@ public static class CharacterCreation
                         return new CityInfo("Samurai DE", "Haoti's Grounds", 368, 780, -1, Map.Malas);
                     }
 
-                    useHaven = true;
-
                     /*
                      * Unfortunately you are playing on a *NON-Samurai-Empire* game
                      * installation and cannot be transported to Tokuno.
@@ -293,8 +370,7 @@ public static class CharacterCreation
                      * Haven on the Trammel facet.
                      */
                     Timer.StartTimer(BadStartMessageDelay, () => m.SendLocalizedMessage(1063487));
-
-                    break;
+                    return GetStartingCities()[0];
                 }
             case "ninja":
                 {
@@ -308,8 +384,6 @@ public static class CharacterCreation
                         return new CityInfo("Ninja DE", "Enimo's Residence", 414, 823, -1, Map.Malas);
                     }
 
-                    useHaven = true;
-
                     /*
                      * Unfortunately you are playing on a *NON-Samurai-Empire* game
                      * installation and cannot be transported to Tokuno.
@@ -318,45 +392,8 @@ public static class CharacterCreation
                      * Haven on the Trammel facet.
                      */
                     Timer.StartTimer(BadStartMessageDelay, () => m.SendLocalizedMessage(1063487));
-
-                    break;
+                    return GetStartingCities()[0];
                 }
-        }
-
-        if (post6000Supported && useHaven && availableMaps.Includes(MapSelectionFlags.Trammel))
-        {
-            // New Haven is supported, so put them there...
-            // Note: if your server maps don't contain New Haven, this will place
-            // them in the wilderness of Ocllo
-            return _newHavenInfo;
-        }
-
-        if (useHaven)
-        {
-            // New Haven is not available, so place them in Ocllo instead, if they're aiming for Haven
-            CityInfo oclloBank = new CityInfo("Ocllo", "Near the bank", 3677, 2513, -1, Map.Trammel);
-            if (availableMaps.Includes(MapSelectionFlags.Trammel))
-            {
-                return oclloBank;
-            }
-
-            if (availableMaps.Includes(MapSelectionFlags.Felucca))
-            {
-                oclloBank.Map = Map.Felucca;
-                return oclloBank;
-            }
-        }
-
-        // They're not trying to get to Haven, so use their city selection
-        // instead - adjusted according to available maps
-        if (args.City.Map == Map.Trammel && !availableMaps.Includes(MapSelectionFlags.Trammel))
-        {
-            args.City.Map = Map.Felucca;
-        }
-
-        if (args.City.Map == Map.Felucca && !availableMaps.Includes(MapSelectionFlags.Felucca))
-        {
-            args.City.Map = Map.Trammel;
         }
 
         return args.City;
@@ -597,7 +634,7 @@ public static class CharacterCreation
                 {
                     addSkillItems = false;
 
-                    int[] hues = { 0x1A8, 0xEC, 0x99, 0x90, 0xB5, 0x336, 0x89 };
+                    int[] hues = [0x1A8, 0xEC, 0x99, 0x90, 0xB5, 0x336, 0x89];
                     // TODO: Verify that's ALL the hues for that above.
 
                     if (elf)

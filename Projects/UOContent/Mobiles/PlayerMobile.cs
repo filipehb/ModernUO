@@ -35,7 +35,6 @@ using Server.Spells.Seventh;
 using Server.Spells.Sixth;
 using Server.Spells.Spellweaving;
 using Server.Targeting;
-using Server.Utilities;
 using BaseQuestGump = Server.Engines.MLQuests.Gumps.BaseQuestGump;
 using CalcMoves = Server.Movement.Movement;
 using QuestOfferGump = Server.Engines.MLQuests.Gumps.QuestOfferGump;
@@ -144,7 +143,7 @@ namespace Server.Mobiles
             new(268, 624, 15)
         };
 
-        private Dictionary<int, bool> m_AcquiredRecipes;
+        private HashSet<int> _acquiredRecipes;
 
         private HashSet<Mobile> _allFollowers;
         private int m_BeardModID = -1, m_BeardModHue;
@@ -719,7 +718,7 @@ namespace Server.Mobiles
                 : DateTime.MinValue;
 
         [CommandProperty(AccessLevel.GameMaster)]
-        public int KnownRecipes => m_AcquiredRecipes?.Count ?? 0;
+        public int KnownRecipes => _acquiredRecipes?.Count ?? 0;
 
         [CommandProperty(AccessLevel.Counselor, canModify: true)]
         public VirtueContext Virtues => VirtueSystem.GetOrCreateVirtues(this);
@@ -936,14 +935,9 @@ namespace Server.Mobiles
 
         public static void Initialize()
         {
-            EventSink.Login += OnLogin;
             EventSink.Logout += OnLogout;
             EventSink.Connected += EventSink_Connected;
             EventSink.Disconnected += EventSink_Disconnected;
-
-            EventSink.TargetedSkillUse += TargetedSkillUse;
-            EventSink.EquipMacro += EquipMacro;
-            EventSink.UnequipMacro += UnequipMacro;
 
             if (Core.SE)
             {
@@ -963,7 +957,7 @@ namespace Server.Mobiles
             }
         }
 
-        private static void TargetedSkillUse(Mobile from, IEntity target, int skillId)
+        public static void TargetedSkillUse(Mobile from, IEntity target, int skillId)
         {
             if (from == null || target == null)
             {
@@ -1061,11 +1055,20 @@ namespace Server.Mobiles
         {
             foreach (var m in World.Mobiles.Values)
             {
-                if (m is PlayerMobile pm &&
-                    ((!pm.Mounted || pm.Mount is EtherealMount) && pm.AllFollowers?.Count > pm.AutoStabled?.Count ||
-                     pm.Mounted && pm.AllFollowers?.Count > (pm.AutoStabled?.Count ?? 0) + 1))
+                if (m is not PlayerMobile pm || pm.AllFollowers == null || pm.AllFollowers.Count == 0)
                 {
-                    pm.AutoStablePets(); /* autostable checks summons, et al: no need here */
+                    continue;
+                }
+
+                var autoStabledCount = pm.AutoStabled?.Count ?? 0;
+                if (pm.Mounted && pm.Mount is not EtherealMount)
+                {
+                    autoStabledCount++;
+                }
+
+                if (pm.AllFollowers.Count > autoStabledCount)
+                {
+                    pm.AutoStablePets();
                 }
             }
         }
@@ -1213,7 +1216,7 @@ namespace Server.Mobiles
             }
         }
 
-        private static void OnLogin(Mobile from)
+        public static void OnLogin(PlayerMobile from)
         {
             if (AccountHandler.LockdownLevel > AccessLevel.Player)
             {
@@ -1246,15 +1249,22 @@ namespace Server.Mobiles
                     notice = "The server is currently under lockdown. You have sufficient access level to connect.";
                 }
 
-                from.SendGump(new NoticeGump(1060637, 30720, notice, 0xFFC000, 300, 140));
+                from.SendGump(new ServerLockdownNoticeGump(notice));
                 return;
             }
 
-            if (from is PlayerMobile mobile)
-            {
-                VirtueSystem.CheckAtrophies(mobile);
-                mobile.ClaimAutoStabledPets();
-            }
+            VirtueSystem.CheckAtrophies(from);
+            from.ClaimAutoStabledPets();
+            AnimalForm.GetContext(from)?.Timer.Start();
+        }
+
+        private class ServerLockdownNoticeGump : StaticNoticeGump<ServerLockdownNoticeGump>
+        {
+            public override int Width => 300;
+            public override int Height => 140;
+            public override string Content { get; }
+
+            public ServerLockdownNoticeGump(string content) => Content = content;
         }
 
         public void ValidateEquipment()
@@ -2394,7 +2404,7 @@ namespace Server.Mobiles
             // This fixes a "bug" where players put blessed items in nested bags and they were dropped on death
             if (Core.AOS && Backpack?.Deleted == false)
             {
-                foreach (var item in Backpack.EnumerateItemsByType<Item>(predicate: FindItems_Callback))
+                foreach (var item in Backpack.EnumerateItems(true, FindItems_Callback))
                 {
                     Backpack.AddItem(item);
                 }
@@ -2549,6 +2559,7 @@ namespace Server.Mobiles
             PolymorphSpell.StopTimer(this);
             IncognitoSpell.StopTimer(this);
             DisguisePersistence.RemoveTimer(this);
+            AnimalForm.RemoveContext(this, true);
 
             EndAction<PolymorphSpell>();
             EndAction<IncognitoSpell>();
@@ -2769,11 +2780,11 @@ namespace Server.Mobiles
             }
         }
 
-        public override void Damage(int amount, Mobile from = null, bool informMount = true)
+        public override void Damage(int amount, Mobile from = null, bool informMount = true, bool ignoreEvilOmen = false)
         {
             var damageBonus = 1.0;
 
-            if (EvilOmenSpell.EndEffect(this) && !PainSpikeSpell.UnderEffect(this))
+            if (EvilOmenSpell.EndEffect(this) && !ignoreEvilOmen)
             {
                 damageBonus += 0.25;
             }
@@ -2852,6 +2863,7 @@ namespace Server.Mobiles
 
             switch (version)
             {
+                case 34: // Acquired Recipes is now a Set
                 case 33: // Removes champion title
                 case 32: // Removes virtue properties
                 case 31: // Removed Short/Long Term Elapse
@@ -2902,14 +2914,14 @@ namespace Server.Mobiles
 
                         if (recipeCount > 0)
                         {
-                            m_AcquiredRecipes = new Dictionary<int, bool>();
+                            _acquiredRecipes = new HashSet<int>();
 
                             for (var i = 0; i < recipeCount; i++)
                             {
                                 var r = reader.ReadInt();
-                                if (reader.ReadBool()) // Don't add in recipes which we haven't gotten or have been removed
+                                if (version > 33 || reader.ReadBool()) // Don't add in recipes which we haven't gotten or have been removed
                                 {
-                                    m_AcquiredRecipes.Add(r, true);
+                                    _acquiredRecipes.Add(r);
                                 }
                             }
                         }
@@ -3195,7 +3207,7 @@ namespace Server.Mobiles
         {
             base.Serialize(writer);
 
-            writer.Write(33); // version
+            writer.Write(34); // version
 
             if (Stabled == null)
             {
@@ -3235,18 +3247,17 @@ namespace Server.Mobiles
                 writer.Write(AutoStabled);
             }
 
-            if (m_AcquiredRecipes == null)
+            if (_acquiredRecipes == null)
             {
                 writer.Write(0);
             }
             else
             {
-                writer.Write(m_AcquiredRecipes.Count);
+                writer.Write(_acquiredRecipes.Count);
 
-                foreach (var kvp in m_AcquiredRecipes)
+                foreach (var recipeId in _acquiredRecipes)
                 {
-                    writer.Write(kvp.Key);
-                    writer.Write(kvp.Value);
+                    writer.Write(recipeId);
                 }
             }
 
@@ -4458,12 +4469,11 @@ namespace Server.Mobiles
             InvalidateProperties();
         }
 
-        public virtual bool HasRecipe(Recipe r) => r != null && HasRecipe(r.ID);
+        public bool HasRecipe(Recipe r) => r != null && HasRecipe(r.ID);
 
-        public virtual bool HasRecipe(int recipeID) =>
-            m_AcquiredRecipes != null && m_AcquiredRecipes.TryGetValue(recipeID, out var value) && value;
+        public bool HasRecipe(int recipeID) => _acquiredRecipes?.Contains(recipeID) == true;
 
-        public virtual void AcquireRecipe(Recipe r)
+        public void AcquireRecipe(Recipe r)
         {
             if (r != null)
             {
@@ -4471,15 +4481,33 @@ namespace Server.Mobiles
             }
         }
 
-        public virtual void AcquireRecipe(int recipeID)
+        public void AcquireRecipe(int recipeID)
         {
-            m_AcquiredRecipes ??= new Dictionary<int, bool>();
-            m_AcquiredRecipes[recipeID] = true;
+            _acquiredRecipes ??= new HashSet<int>();
+            _acquiredRecipes.Add(recipeID);
         }
 
-        public virtual void ResetRecipes()
+        public void RemoveRecipe(int recipeID) => _acquiredRecipes?.Remove(recipeID);
+
+        public void ResetRecipes() => _acquiredRecipes = null;
+
+        public void SendAddBuffPacket(BuffInfo buffInfo)
         {
-            m_AcquiredRecipes = null;
+            if (buffInfo == null)
+            {
+                return;
+            }
+
+            NetState.SendAddBuffPacket(
+                Serial,
+                buffInfo.ID,
+                buffInfo.TitleCliloc,
+                buffInfo.SecondaryCliloc,
+                buffInfo.Args,
+                buffInfo.TimeStart == 0
+                    ? 0
+                    : Math.Max(buffInfo.TimeStart + (long)buffInfo.TimeLength.TotalMilliseconds - Core.TickCount, 0)
+            );
         }
 
         public void ResendBuffs()
@@ -4488,7 +4516,7 @@ namespace Server.Mobiles
             {
                 foreach (var info in m_BuffTable.Values)
                 {
-                    info.SendAddBuffPacket(NetState, Serial);
+                    SendAddBuffPacket(info);
                 }
             }
         }
@@ -4508,7 +4536,23 @@ namespace Server.Mobiles
 
             if (NetState?.BuffIcon == true)
             {
-                b.SendAddBuffPacket(NetState, Serial);
+                // Synchronize the buff icon as close to _on the second_ as we can.
+                var msecs = b.TimeLength.Milliseconds;
+                if (msecs >= 8)
+                {
+                    Timer.DelayCall(TimeSpan.FromMilliseconds(msecs), (buffInfo, pm) =>
+                    {
+                        // They are still online, we still have the buff icon in the table, and it is the same buff icon
+                        if (pm.NetState != null && pm.m_BuffTable?.GetValueOrDefault(buffInfo.ID) == buffInfo)
+                        {
+                            pm.SendAddBuffPacket(buffInfo);
+                        }
+                    }, b, this);
+                }
+                else
+                {
+                    SendAddBuffPacket(b);
+                }
             }
         }
 
@@ -4531,7 +4575,7 @@ namespace Server.Mobiles
 
             if (NetState?.BuffIcon == true)
             {
-                BuffInfo.SendRemoveBuffPacket(NetState, Serial, b);
+                NetState.SendRemoveBuffPacket(Serial, b);
             }
 
             if (m_BuffTable.Count <= 0)
@@ -4625,7 +4669,7 @@ namespace Server.Mobiles
                 AddHtmlLocalized(148, 118, 450, 20, 1071022, 0x7FFF); // DISABLE IT!
             }
 
-            public override void OnResponse(NetState sender, RelayInfo info)
+            public override void OnResponse(NetState sender, in RelayInfo info)
             {
                 if (!m_Player.CheckAlive())
                 {
@@ -4776,7 +4820,7 @@ namespace Server.Mobiles
 
             public ItemInsuranceMenuGump NewInstance() => new(m_From, m_Items, m_Insure, m_Page);
 
-            public override void OnResponse(NetState sender, RelayInfo info)
+            public override void OnResponse(NetState sender, in RelayInfo info)
             {
                 if (info.ButtonID == 0 || !m_From.CheckAlive())
                 {
@@ -4872,7 +4916,7 @@ namespace Server.Mobiles
                 AddHtmlLocalized(148, 118, 450, 20, 1073996, 0x7FFF); // ACCEPT
             }
 
-            public override void OnResponse(NetState sender, RelayInfo info)
+            public override void OnResponse(NetState sender, in RelayInfo info)
             {
                 if (!m_From.CheckAlive())
                 {
