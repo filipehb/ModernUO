@@ -30,6 +30,9 @@ public interface ISlayer
 public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftable, ISlayer, IDurability, IAosItem
 {
     private static bool _enableInstaHit;
+    private static int DiceSides = 0;
+    private static int Offset = 0;
+    private static int NumDice = 0;
 
     public static void Configure()
     {
@@ -185,6 +188,18 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool ShouldSerializeEngravedText() => string.IsNullOrEmpty(_engravedText);
 
+    [SerializableField(31)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private int m_NumDice;
+
+    [SerializableField(32)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private int m_DiceSides;
+
+    [SerializableField(33)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private int m_Offset;
+
     private FactionItem m_FactionState;
     private SkillMod m_SkillMod, m_MageMod;
 
@@ -198,6 +213,9 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
         _intRequirement = -1;
         _minDamage = -1;
         _maxDamage = -1;
+        m_NumDice = 0;
+        m_DiceSides = 0;
+        m_Offset = -1;
         _hitSound = -1;
         _missSound = -1;
         _speed = -1;
@@ -386,6 +404,8 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
         }
     }
 
+    public int MaxHitPoints { get; set; }
+
     [SerializableFieldSaveFlag(4)]
     private bool ShouldSerializeHitPoints() => _hitPoints > 0;
 
@@ -450,7 +470,7 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
     [CommandProperty(AccessLevel.GameMaster)]
     public int MinDamage
     {
-        get => _minDamage == -1 ? Core.AOS ? AosMinDamage : OldMinDamage : _minDamage;
+        get {return (Dice_Amount + Dice_Offset);}
         set
         {
             _minDamage = value;
@@ -469,7 +489,7 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
     [CommandProperty(AccessLevel.GameMaster)]
     public int MaxDamage
     {
-        get => _maxDamage == -1 ? Core.AOS ? AosMaxDamage : OldMaxDamage : _maxDamage;
+        get {return (Dice_Amount*Dice_Sides + Dice_Offset);}
         set
         {
             _maxDamage = value;
@@ -645,6 +665,30 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
             ScaleDurability();
             this.MarkDirty();
         }
+    }
+
+    [SerializableProperty(24)]
+    [CommandProperty(AccessLevel.GameMaster)]
+    public int Dice_Sides
+    {
+        get => m_DiceSides <= 0 ? DiceSides : m_DiceSides;
+        set {m_DiceSides=value; InvalidateProperties();}
+    }
+
+    [SerializableProperty(25)]
+    [CommandProperty(AccessLevel.GameMaster)]
+    public int Dice_Offset
+    {
+        get => m_Offset < 0 ? Offset : m_Offset;
+        set {m_Offset=value; InvalidateProperties();}
+    }
+
+    [SerializableProperty(26)]
+    [CommandProperty(AccessLevel.GameMaster)]
+    public int Dice_Amount
+    {
+        get => m_NumDice <= 0 ? NumDice : m_NumDice;
+        set {m_NumDice=value; InvalidateProperties();}
     }
 
     [SerializableFieldSaveFlag(23)]
@@ -2456,7 +2500,14 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
     {
         GetBaseDamageRange(attacker, out var min, out var max);
 
-        var damage = Utility.RandomMinMax(min, max);
+        var damage = 0;
+
+        if (attacker is BaseCreature)
+        {
+            damage = Utility.RandomMinMax(min, max); //TODO: Vai precisar alterar isso em algum momento
+        } else {
+            damage = Utility.Dice(Dice_Amount, Dice_Sides, Dice_Offset);
+        }
 
         if (Core.AOS)
         {
@@ -3942,6 +3993,10 @@ public abstract partial class BaseWeapon : Item, IWeapon, IFactionItem, ICraftab
         ElementalDamages = 0x20000000,
         EngravedText = 0x40000000
     }
+
+    public SlayerName Slayer { get; set; }
+    public SlayerName Slayer2 { get; set; }
+    public AosAttributes Attributes { get; }
 }
 
 public enum CheckSlayerResult
