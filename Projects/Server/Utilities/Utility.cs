@@ -21,91 +21,6 @@ public static class Utility
 {
     private static Dictionary<IPAddress, IPAddress> _ipAddressTable;
 
-    private static SkillName[] _allSkills =
-    [
-        SkillName.Alchemy,
-        SkillName.Anatomy,
-        SkillName.AnimalLore,
-        SkillName.ItemID,
-        SkillName.ArmsLore,
-        SkillName.Parry,
-        SkillName.Begging,
-        SkillName.Blacksmith,
-        SkillName.Fletching,
-        SkillName.Peacemaking,
-        SkillName.Camping,
-        SkillName.Carpentry,
-        SkillName.Cartography,
-        SkillName.Cooking,
-        SkillName.DetectHidden,
-        SkillName.Discordance,
-        SkillName.EvalInt,
-        SkillName.Healing,
-        SkillName.Fishing,
-        SkillName.Forensics,
-        SkillName.Herding,
-        SkillName.Hiding,
-        SkillName.Provocation,
-        SkillName.Inscribe,
-        SkillName.Lockpicking,
-        SkillName.Magery,
-        SkillName.MagicResist,
-        SkillName.Tactics,
-        SkillName.Snooping,
-        SkillName.Musicianship,
-        SkillName.Poisoning,
-        SkillName.Archery,
-        SkillName.SpiritSpeak,
-        SkillName.Stealing,
-        SkillName.Tailoring,
-        SkillName.AnimalTaming,
-        SkillName.TasteID,
-        SkillName.Tinkering,
-        SkillName.Tracking,
-        SkillName.Veterinary,
-        SkillName.Swords,
-        SkillName.Macing,
-        SkillName.Fencing,
-        SkillName.Wrestling,
-        SkillName.Lumberjacking,
-        SkillName.Mining,
-        SkillName.Meditation,
-        SkillName.Stealth,
-        SkillName.RemoveTrap,
-        SkillName.Necromancy,
-        SkillName.Focus,
-        SkillName.Chivalry,
-        SkillName.Bushido,
-        SkillName.Ninjitsu,
-        SkillName.Spellweaving,
-        // TODO: Update RandomSkill once these are implemented!
-        // SkillName.Mysticism,
-        // SkillName.Imbuing,
-        SkillName.Throwing
-    ];
-
-    private static readonly SkillName[] m_CombatSkills =
-    [
-        SkillName.Archery,
-        SkillName.Swords,
-        SkillName.Macing,
-        SkillName.Fencing,
-        SkillName.Wrestling
-    ];
-
-    private static readonly SkillName[] m_CraftSkills =
-    [
-        SkillName.Alchemy,
-        SkillName.Blacksmith,
-        SkillName.Fletching,
-        SkillName.Carpentry,
-        SkillName.Cartography,
-        SkillName.Cooking,
-        SkillName.Inscribe,
-        SkillName.Tailoring,
-        SkillName.Tinkering
-    ];
-
     private static readonly Stack<ConsoleColor> m_ConsoleColors = new();
 
     public static void Separate(StringBuilder sb, string value, string separator)
@@ -365,25 +280,6 @@ public static class Utility
     public static object GetArrayCap(Array array, int index, object emptyValue = null) =>
         array.Length > 0 ? array.GetValue(Math.Clamp(index, 0, array.Length - 1)) : emptyValue;
 
-    public static SkillName RandomSkill()
-    {
-        // TODO: Add 2 to each entry for Mysticism and Imbuing, once they are uncommented on _allSkills.
-        var offset = Core.Expansion switch
-        {
-            >= Expansion.SA => 0,
-            Expansion.ML    => 1,
-            Expansion.SE    => 2,
-            Expansion.AOS   => 4,
-            _               => 7
-        };
-
-        return _allSkills[Random(_allSkills.Length - offset)];
-    }
-
-    public static SkillName RandomCombatSkill() => m_CombatSkills.RandomElement();
-
-    public static SkillName RandomCraftSkill() => m_CraftSkills.RandomElement();
-
     public static void FixPoints(ref Point3D top, ref Point3D bottom)
     {
         if (bottom.m_X < top.m_X)
@@ -523,7 +419,7 @@ public static class Utility
     // This requires copying the List, which is an O(n) operation.
     public static List<R> ToList<T, R>(this PooledRefList<T> poolList) where T : R
     {
-        var size = poolList._size;
+        var size = poolList.Count;
         var items = poolList._items;
 
         var list = new List<R>(size);
@@ -532,7 +428,7 @@ public static class Utility
             return list;
         }
 
-        for (var i = 0; i < items.Length; i++)
+        for (var i = 0; i < size; i++)
         {
             list.Add(items[i]);
         }
@@ -850,6 +746,12 @@ public static class Utility
     public static T RandomList<T>(params T[] list) => list.RandomElement();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T RandomElement<T>(this ReadOnlySpan<T> list) => list.Length == 0 ? default : list[Random(list.Length)];
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T RandomElement<T>(this T[] list) => list.RandomElement(default);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T RandomElement<T>(this IList<T> list) => list.RandomElement(default);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -961,6 +863,10 @@ public static class Utility
         list.RemoveAt(index);
         return value;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static T RandomElement<T>(this T[] list, T valueIfZero) =>
+        list.Length == 0 ? valueIfZero : list[Random(list.Length)];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T RandomElement<T>(this IList<T> list, T valueIfZero) =>
