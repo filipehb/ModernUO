@@ -24,6 +24,8 @@ public class CraftGump : DynamicGump
     private readonly BaseTool _tool;
     private readonly TextDefinition _notice;
 
+    public override bool Singleton => true;
+
     public CraftGump(
         Mobile from, CraftSystem craftSystem, BaseTool tool, TextDefinition notice, CraftPage page = CraftPage.None
     ) : base(40, 40)
@@ -38,9 +40,6 @@ public class CraftGump : DynamicGump
     protected override void BuildLayout(ref DynamicGumpBuilder builder)
     {
         var context = _craftSystem.GetContext(_from);
-
-        _from.CloseGump<CraftGump>();
-        _from.CloseGump<CraftGumpItem>();
 
         builder.AddPage();
 
@@ -396,7 +395,7 @@ public class CraftGump : DynamicGump
         }
     }
 
-    public int CreateGroupList(ref DynamicGumpBuilder builder)
+    public void CreateGroupList(ref DynamicGumpBuilder builder)
     {
         var craftGroupCol = _craftSystem.CraftGroups;
 
@@ -418,8 +417,13 @@ public class CraftGump : DynamicGump
                 builder.AddLabel(50, 80 + i * 20, LabelHue, craftGroup.NameString);
             }
         }
+    }
 
-        return craftGroupCol.Count;
+    public override void SendTo(NetState ns)
+    {
+        _from.CloseGump<CraftGumpItem>();
+
+        base.SendTo(ns);
     }
 
     public static int GetButtonID(int type, int index) => 1 + type + index * 7;

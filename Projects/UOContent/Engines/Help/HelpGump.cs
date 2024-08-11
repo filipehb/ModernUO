@@ -56,17 +56,14 @@ public class ContainedMenu : QuestionMenu
 
 public sealed class HelpGump : DynamicGump
 {
-    private Mobile _from;
+    private readonly Mobile _from;
 
-    public HelpGump(Mobile from) : base(0, 0)
-    {
-        _from = from;
-    }
+    public override bool Singleton => true;
+
+    public HelpGump(Mobile from) : base(0, 0) => _from = from;
 
     protected override void BuildLayout(ref DynamicGumpBuilder builder)
     {
-        _from.CloseGump<HelpGump>();
-
         var isYoung = IsYoung(_from);
         var totalHeight = 110 + (isYoung ? 64 : 0) + 4 * 80;
 
@@ -236,12 +233,9 @@ public sealed class HelpGump : DynamicGump
 
     public static void HelpRequest(Mobile m)
     {
-        foreach (var gump in m.NetState.Gumps)
+        if (m.HasGump<HelpGump>())
         {
-            if (gump is HelpGump)
-            {
-                return;
-            }
+            return;
         }
 
         if (!PageQueue.CheckAllowedToPage(m))
