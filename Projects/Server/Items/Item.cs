@@ -328,7 +328,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
     public virtual TimeSpan DecayTime => DefaultDecayTime;
 
     [CommandProperty(AccessLevel.GameMaster)]
-    public virtual bool Decays => Movable && Visible && Spawner == null; 
+    public virtual bool Decays => Movable && Visible && Spawner == null;
 
     public DateTime LastMoved { get; set; }
 
@@ -792,6 +792,7 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
     public virtual void GetProperties(IPropertyList list)
     {
         AddNameProperties(list);
+        AppendChildNameProperties(list);
     }
 
     [IgnoreDupe]
@@ -1943,8 +1944,6 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
         {
             AddQuestItemProperty(list);
         }
-
-        AppendChildNameProperties(list);
     }
 
     /// <summary>
@@ -3267,6 +3266,13 @@ public class Item : IHued, IComparable<Item>, ISpawnable, IObjectPropertyListEnt
             );
         }
     }
+
+#if TRACK_LEAKS
+    ~Item()
+    {
+        EntityFinalizationTracker.NotifyFinalized(this);
+    }
+#endif
 
     public virtual void OnDelete()
     {
