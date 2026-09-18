@@ -60,6 +60,8 @@ public static class CosmereCommands
         CommandSystem.Register("CosmereCraft", AccessLevel.Player, CosmereCraft_OnCommand);
         CommandSystem.Register("CosmereTrade", AccessLevel.Player, CosmereTrade_OnCommand);
         CommandSystem.Register("CosmereTime", AccessLevel.Player, CosmereTime_OnCommand);
+        CommandSystem.Register("Possess", AccessLevel.GameMaster, Possess_OnCommand);
+        CommandSystem.Register("Unpossess", AccessLevel.GameMaster, Unpossess_OnCommand);
     }
 
     [Usage("CosmereSheet")]
@@ -967,6 +969,76 @@ public static class CosmereCommands
         pm.SendMessage(
             $"Cosmere time: {CosmereTime.Describe(period)} ({hours:D2}:{minutes:D2})."
         );
+    }
+
+    [Usage("Possess")]
+    [Description("Possess a creature for RP (GameMaster+). Cannot possess players, pets, or vendors.")]
+    private static void Possess_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm || pm.AccessLevel < AccessLevel.GameMaster)
+        {
+            e.Mobile.SendMessage("Possess requires GameMaster access on your own body.");
+            return;
+        }
+
+        if (!CosmereConfig.PossessEnabled)
+        {
+            pm.SendMessage("Possess is disabled on this shard.");
+            return;
+        }
+
+        if (CosmerePossess.IsPossessing(pm))
+        {
+            pm.SendMessage("Already possessing. Use [Unpossess] first.");
+            return;
+        }
+
+        pm.SendMessage("Target a creature to possess.");
+        pm.Target = new PossessTarget(pm);
+    }
+
+    [Usage("Unpossess")]
+    [Description("Leave a possessed creature; you appear hidden beside it.")]
+    private static void Unpossess_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile.AccessLevel < AccessLevel.GameMaster &&
+            !CosmerePossess.IsInPossessSession(e.Mobile))
+        {
+            e.Mobile.SendMessage("Unpossess requires GameMaster access.");
+            return;
+        }
+
+        if (!CosmerePossess.TryUnpossess(e.Mobile, out var reason))
+        {
+            e.Mobile.SendMessage(reason ?? "Unpossess failed.");
+        }
+    }
+
+    private class PossessTarget : Target
+    {
+        private readonly PlayerMobile _staff;
+
+        public PossessTarget(PlayerMobile staff) : base(12, false, TargetFlags.None) => _staff = staff;
+
+        protected override void OnTarget(Mobile from, object targeted)
+        {
+            if (targeted is not Mobile m)
+            {
+                _staff.SendMessage("That is not a creature.");
+                return;
+            }
+
+            if (!CosmerePossess.TryValidateTarget(m, out var creature, out var reason))
+            {
+                _staff.SendMessage(reason);
+                return;
+            }
+
+            if (!CosmerePossess.TryPossess(_staff, creature, out reason))
+            {
+                _staff.SendMessage(reason ?? "Possess failed.");
+            }
+        }
     }
 
     [Usage("CosmereProfession [assign|xp|setrank …]")]

@@ -38,6 +38,7 @@ public static class CosmereConfig
     public static double LivingWorldTickSeconds { get; private set; } = 3.0;
     public static int LivingWorldPlayerRange { get; private set; } = 24;
     public static int LivingWorldHuntRange { get; private set; } = 12;
+    public static bool PossessEnabled { get; private set; } = true;
 
     public static void Configure()
     {
@@ -78,6 +79,7 @@ public static class CosmereConfig
         LivingWorldTickSeconds = ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldTickSeconds", 3.0);
         LivingWorldPlayerRange = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldPlayerRange", 24));
         LivingWorldHuntRange = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldHuntRange", 12));
+        PossessEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.PossessEnabled", true);
     }
 
     /// <summary>Test-only hook to flip the master debug switch without reloading config.</summary>
