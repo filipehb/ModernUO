@@ -9,6 +9,7 @@ using Server.Engines.BuffIcons;
 using Server.Engines.BulkOrders;
 using Server.Engines.CannedEvil;
 using Server.Engines.ConPVP;
+using Server.Engines.Cosmere;
 using Server.Engines.Craft;
 using Server.Engines.Help;
 using Server.Engines.Insurance;
@@ -542,6 +543,12 @@ namespace Server.Mobiles
         {
             get
             {
+                // Cosmere Phase 1: Health pool from sheet is source of truth for max hits.
+                if (_cosmereSheet != null)
+                {
+                    return _cosmereSheet.MaxHealth;
+                }
+
                 int strBase;
                 var strOffs = GetStatOffset(StatType.Str);
 
@@ -571,11 +578,17 @@ namespace Server.Mobiles
         }
 
         [CommandProperty(AccessLevel.GameMaster)]
-        public override int StamMax => base.StamMax + AosAttributes.GetValue(this, AosAttribute.BonusStam);
+        public override int StamMax =>
+            _cosmereSheet != null
+                ? _cosmereSheet.MaxFocus
+                : base.StamMax + AosAttributes.GetValue(this, AosAttribute.BonusStam);
 
         [CommandProperty(AccessLevel.GameMaster)]
-        public override int ManaMax => base.ManaMax + AosAttributes.GetValue(this, AosAttribute.BonusMana) +
-                                       (Core.ML && Race == Race.Elf ? 20 : 0);
+        public override int ManaMax =>
+            _cosmereSheet != null
+                ? _cosmereSheet.MaxInvestiture
+                : base.ManaMax + AosAttributes.GetValue(this, AosAttribute.BonusMana) +
+                  (Core.ML && Race == Race.Elf ? 20 : 0);
 
         [CommandProperty(AccessLevel.GameMaster)]
         public override int Str
@@ -1685,6 +1698,11 @@ namespace Server.Mobiles
                 CheckStatTimers();
             }
 
+            if (item is BaseArmor || IsCosmereClothingLayer(item.Layer))
+            {
+                Server.Engines.Cosmere.CosmereEquipment.SyncCumbersome(this);
+            }
+
             if (NetState != null)
             {
                 CheckLightLevels(false);
@@ -1700,11 +1718,19 @@ namespace Server.Mobiles
                 CheckStatTimers();
             }
 
+            if (item is BaseArmor || IsCosmereClothingLayer(item.Layer))
+            {
+                Server.Engines.Cosmere.CosmereEquipment.SyncCumbersome(this);
+            }
+
             if (NetState != null)
             {
                 CheckLightLevels(false);
             }
         }
+
+        private static bool IsCosmereClothingLayer(Layer layer) =>
+            layer is Layer.InnerTorso or Layer.MiddleTorso or Layer.OuterTorso or Layer.Shirt;
 
         private void AddArmorRating(ref double rating, Item armor)
         {
@@ -2056,6 +2082,11 @@ namespace Server.Mobiles
             }
 
             if (!base.CheckEquip(item))
+            {
+                return false;
+            }
+
+            if (!Server.Engines.Cosmere.CosmereEquipment.CheckTwoHandedEquip(this, item))
             {
                 return false;
             }
@@ -2718,7 +2749,32 @@ namespace Server.Mobiles
                 }
             }
 
-            base.Damage((int)(amount * damageBonus), from, informMount);
+            var finalAmount = (int)(amount * damageBonus);
+
+            // Phase 3: convert inbound UO damage into Cosmere Health (NPC→PC, spells, etc.).
+            if (Server.Engines.Cosmere.CosmereConfig.CombatEnabled &&
+                _cosmereDamageDepth == 0 &&
+                finalAmount > 0)
+            {
+                EnsureCosmereSheet();
+                if (!CosmereSheet.Dead)
+                {
+                    Server.Engines.Cosmere.CosmereCombat.ApplyCosmereDamage(this, finalAmount, from);
+                    OnDamage(finalAmount, from, CosmereSheet.Health <= 0 && CosmereSheet.Dead);
+
+                    if (hasBloodOath && Alive && !Deleted && !IsDeadBondedPet)
+                    {
+                        from.Damage(
+                            BloodOathSpell.ComputeReflectedDamage(amount, 0, applyResistMitigation: false),
+                            this
+                        );
+                    }
+
+                    return;
+                }
+            }
+
+            base.Damage(finalAmount, from, informMount);
 
             // If the blood oath caster will die then damage is not reflected back to the attacker
             if (hasBloodOath && Alive && !Deleted && !IsDeadBondedPet)
@@ -2771,6 +2827,12 @@ namespace Server.Mobiles
 
             switch (version)
             {
+                case 35: // CosmereSheet
+                    {
+                        _cosmereSheet = new global::Server.Engines.Cosmere.CosmereSheet();
+                        _cosmereSheet.Deserialize(reader);
+                        goto case 34;
+                    }
                 case 34: // Acquired Recipes is now a Set
                 case 33: // Removes champion title
                 case 32: // Removes virtue properties
@@ -3118,7 +3180,10 @@ namespace Server.Mobiles
         {
             base.Serialize(writer);
 
-            writer.Write(34); // version
+            writer.Write(35); // version — CosmereSheet
+
+            _cosmereSheet ??= global::Server.Engines.Cosmere.CosmereSheet.CreateMundaneStarter();
+            _cosmereSheet.Serialize(writer);
 
             if (Stabled == null)
             {
@@ -3407,6 +3472,12 @@ namespace Server.Mobiles
 
         protected override bool OnMove(Direction d)
         {
+            if (CosmereCombat is { Braced: true })
+            {
+                CosmereCombat.Braced = false;
+                SendMessage("You are no longer Braced.");
+            }
+
             if (!Core.SE)
             {
                 return base.OnMove(d);
@@ -3447,6 +3518,16 @@ namespace Server.Mobiles
         public override void OnMovement(Mobile m, Point3D oldLocation)
         {
             base.OnMovement(m, oldLocation);
+
+            // Cosmere Reactive Strike: enemy voluntarily leaves melee reach.
+            if (Server.Engines.Cosmere.CosmereConfig.CombatEnabled &&
+                CosmereCombat is { InCombat: true } &&
+                m != this &&
+                m.Alive &&
+                Server.Engines.Cosmere.CosmereCombat.IsLeavingMeleeReach(oldLocation, m.Location, Location))
+            {
+                Server.Engines.Cosmere.CosmereCombat.TryReactiveStrike(this, m);
+            }
 
             // Passive detect hidden: either party moving within range can trigger detection
             if (m is PlayerMobile && Utility.InRange(Location, m.Location, 4))
