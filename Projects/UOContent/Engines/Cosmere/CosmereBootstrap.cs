@@ -10,6 +10,7 @@ public static class CosmereBootstrap
     public static void Initialize()
     {
         CosmereTime.Initialize();
+        CosmereLivingWorld.Initialize();
     }
 
     [OnEvent(nameof(CharCreation.CharacterCreatedEvent))]

@@ -33,6 +33,11 @@ public static class CosmereConfig
     public static bool DayPeriodsEnabled { get; private set; } = true;
     public static bool AnnouncePeriodChange { get; private set; }
     public static int NightLightBonus { get; private set; }
+    public static bool LivingWorldEnabled { get; private set; } = true;
+    public static bool StaffWakesLivingWorld { get; private set; }
+    public static double LivingWorldTickSeconds { get; private set; } = 3.0;
+    public static int LivingWorldPlayerRange { get; private set; } = 24;
+    public static int LivingWorldHuntRange { get; private set; } = 12;
 
     public static void Configure()
     {
@@ -68,6 +73,11 @@ public static class CosmereConfig
         DayPeriodsEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.DayPeriodsEnabled", true);
         AnnouncePeriodChange = ServerConfiguration.GetOrUpdateSetting("Cosmere.AnnouncePeriodChange", false);
         NightLightBonus = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.NightLightBonus", 0));
+        LivingWorldEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldEnabled", true);
+        StaffWakesLivingWorld = ServerConfiguration.GetOrUpdateSetting("Cosmere.StaffWakesLivingWorld", false);
+        LivingWorldTickSeconds = ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldTickSeconds", 3.0);
+        LivingWorldPlayerRange = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldPlayerRange", 24));
+        LivingWorldHuntRange = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldHuntRange", 12));
     }
 
     /// <summary>Test-only hook to flip the master debug switch without reloading config.</summary>
@@ -91,4 +101,8 @@ public static class CosmereConfig
     }
 
     internal static void SetDayPeriodsEnabledForTests(bool enabled) => DayPeriodsEnabled = enabled;
+
+    internal static void SetLivingWorldEnabledForTests(bool enabled) => LivingWorldEnabled = enabled;
+
+    internal static void SetStaffWakesLivingWorldForTests(bool enabled) => StaffWakesLivingWorld = enabled;
 }
