@@ -8,7 +8,7 @@ namespace Server.Engines.Cosmere;
 /// </summary>
 public class CosmereSheet
 {
-    public const int SheetVersion = 4;
+    public const int SheetVersion = 5;
 
     private readonly int[] _skillRanks = new int[CosmereSkills.Count];
 
@@ -42,6 +42,16 @@ public class CosmereSheet
     public CosmereProfessionId ProfessionId { get; set; }
     public int ProfessionRank { get; set; }
     public int ProfessionXp { get; set; }
+
+    // v5 RP journal
+    public string RpStory { get; set; } = "";
+    public string RpGoals { get; set; } = "";
+    public string RpAspirations { get; set; } = "";
+    public string RpNotes { get; set; } = "";
+    public int NextRpDiaryId { get; set; } = 1;
+    public int NextRpEvalId { get; set; } = 1;
+    public List<CosmereRpDiaryEntry> RpDiary { get; } = [];
+    public List<CosmereRpEvaluation> RpEvaluations { get; } = [];
 
     public List<string> Expertises { get; } = [];
     public List<string> Talents { get; } = [];
@@ -540,6 +550,26 @@ public class CosmereSheet
         writer.Write((int)ProfessionId);
         writer.Write(ProfessionRank);
         writer.Write(ProfessionXp);
+
+        // v5+
+        writer.Write(RpStory);
+        writer.Write(RpGoals);
+        writer.Write(RpAspirations);
+        writer.Write(RpNotes);
+        writer.Write(NextRpDiaryId);
+        writer.Write(NextRpEvalId);
+
+        writer.Write(RpDiary.Count);
+        for (var i = 0; i < RpDiary.Count; i++)
+        {
+            RpDiary[i].Serialize(writer);
+        }
+
+        writer.Write(RpEvaluations.Count);
+        for (var i = 0; i < RpEvaluations.Count; i++)
+        {
+            RpEvaluations[i].Serialize(writer);
+        }
     }
 
     public void Deserialize(IGenericReader reader)
@@ -593,6 +623,14 @@ public class CosmereSheet
         ProfessionId = CosmereProfessionId.None;
         ProfessionRank = 0;
         ProfessionXp = 0;
+        RpStory = "";
+        RpGoals = "";
+        RpAspirations = "";
+        RpNotes = "";
+        NextRpDiaryId = 1;
+        NextRpEvalId = 1;
+        RpDiary.Clear();
+        RpEvaluations.Clear();
 
         if (version >= 1)
         {
@@ -646,6 +684,28 @@ public class CosmereSheet
             ProfessionId = (CosmereProfessionId)reader.ReadInt();
             ProfessionRank = reader.ReadInt();
             ProfessionXp = reader.ReadInt();
+        }
+
+        if (version >= 5)
+        {
+            RpStory = reader.ReadString() ?? "";
+            RpGoals = reader.ReadString() ?? "";
+            RpAspirations = reader.ReadString() ?? "";
+            RpNotes = reader.ReadString() ?? "";
+            NextRpDiaryId = reader.ReadInt();
+            NextRpEvalId = reader.ReadInt();
+
+            var diaryCount = reader.ReadInt();
+            for (var i = 0; i < diaryCount; i++)
+            {
+                RpDiary.Add(CosmereRpDiaryEntry.Deserialize(reader));
+            }
+
+            var evalCount = reader.ReadInt();
+            for (var i = 0; i < evalCount; i++)
+            {
+                RpEvaluations.Add(CosmereRpEvaluation.Deserialize(reader));
+            }
         }
 
         ClampPools();

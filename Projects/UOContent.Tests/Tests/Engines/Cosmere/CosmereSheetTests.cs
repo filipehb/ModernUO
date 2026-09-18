@@ -155,6 +155,33 @@ public class CosmereSheetTests
         original.ProfessionId = CosmereProfessionId.Artisan;
         original.ProfessionRank = 3;
         original.ProfessionXp = 120;
+        original.RpStory = "A mistborn from Luthadel.";
+        original.RpGoals = "Find the atium cache.";
+        original.RpAspirations = "Protect the crew.";
+        original.RpNotes = "Allergic to pewter.";
+        original.NextRpDiaryId = 3;
+        original.NextRpEvalId = 2;
+        original.RpDiary.Add(
+            new CosmereRpDiaryEntry
+            {
+                Id = 1,
+                Created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                Title = "Arrival",
+                Body = "Reached the city."
+            }
+        );
+        original.RpEvaluations.Add(
+            new CosmereRpEvaluation
+            {
+                Id = 1,
+                EvaluatorSerial = (Serial)0x40000001,
+                EvaluatorName = "Staff",
+                Created = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+                Score = 4,
+                Feedback = "Good scene",
+                Superseded = false
+            }
+        );
 
         var writer = new BufferWriter(true);
         original.Serialize(writer);
@@ -201,5 +228,17 @@ public class CosmereSheetTests
         Assert.Equal(CosmereProfessionId.Artisan, copy.ProfessionId);
         Assert.Equal(3, copy.ProfessionRank);
         Assert.Equal(120, copy.ProfessionXp);
+        Assert.Equal("A mistborn from Luthadel.", copy.RpStory);
+        Assert.Equal("Find the atium cache.", copy.RpGoals);
+        Assert.Equal("Protect the crew.", copy.RpAspirations);
+        Assert.Equal("Allergic to pewter.", copy.RpNotes);
+        Assert.Equal(3, copy.NextRpDiaryId);
+        Assert.Equal(2, copy.NextRpEvalId);
+        Assert.Single(copy.RpDiary);
+        Assert.Equal("Arrival", copy.RpDiary[0].Title);
+        Assert.Single(copy.RpEvaluations);
+        Assert.Equal(4, copy.RpEvaluations[0].Score);
+        Assert.Equal("Staff", copy.RpEvaluations[0].EvaluatorName);
+        Assert.False(copy.RpEvaluations[0].Superseded);
     }
 }

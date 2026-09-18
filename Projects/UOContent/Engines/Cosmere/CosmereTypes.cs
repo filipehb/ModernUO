@@ -204,3 +204,62 @@ public class CosmereInjuryRecord
         return record;
     }
 }
+
+public class CosmereRpDiaryEntry
+{
+    public int Id { get; set; }
+    public DateTime Created { get; set; }
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+
+    public void Serialize(IGenericWriter writer)
+    {
+        writer.Write(Id);
+        writer.Write(Created);
+        writer.Write(Title);
+        writer.Write(Body);
+    }
+
+    public static CosmereRpDiaryEntry Deserialize(IGenericReader reader) =>
+        new()
+        {
+            Id = reader.ReadInt(),
+            Created = reader.ReadDateTime(),
+            Title = reader.ReadString() ?? "",
+            Body = reader.ReadString() ?? ""
+        };
+}
+
+public class CosmereRpEvaluation
+{
+    public int Id { get; set; }
+    public Serial EvaluatorSerial { get; set; }
+    public string EvaluatorName { get; set; } = "";
+    public DateTime Created { get; set; }
+    public int Score { get; set; }
+    public string Feedback { get; set; } = "";
+    public bool Superseded { get; set; }
+
+    public void Serialize(IGenericWriter writer)
+    {
+        writer.Write(Id);
+        writer.Write(EvaluatorSerial);
+        writer.Write(EvaluatorName);
+        writer.Write(Created);
+        writer.Write(Score);
+        writer.Write(Feedback);
+        writer.Write(Superseded);
+    }
+
+    public static CosmereRpEvaluation Deserialize(IGenericReader reader) =>
+        new()
+        {
+            Id = reader.ReadInt(),
+            EvaluatorSerial = reader.ReadSerial(),
+            EvaluatorName = reader.ReadString() ?? "",
+            Created = reader.ReadDateTime(),
+            Score = reader.ReadInt(),
+            Feedback = reader.ReadString() ?? "",
+            Superseded = reader.ReadBool()
+        };
+}

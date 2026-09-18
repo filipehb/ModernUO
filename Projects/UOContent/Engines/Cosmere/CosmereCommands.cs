@@ -62,6 +62,8 @@ public static class CosmereCommands
         CommandSystem.Register("CosmereTime", AccessLevel.Player, CosmereTime_OnCommand);
         CommandSystem.Register("Possess", AccessLevel.GameMaster, Possess_OnCommand);
         CommandSystem.Register("Unpossess", AccessLevel.GameMaster, Unpossess_OnCommand);
+        CommandSystem.Register("CosmereRP", AccessLevel.Player, CosmereRP_OnCommand);
+        CommandSystem.Register("CosmereRPList", AccessLevel.GameMaster, CosmereRPList_OnCommand);
     }
 
     [Usage("CosmereSheet")]
@@ -1011,6 +1013,77 @@ public static class CosmereCommands
         if (!CosmerePossess.TryUnpossess(e.Mobile, out var reason))
         {
             e.Mobile.SendMessage(reason ?? "Unpossess failed.");
+        }
+    }
+
+    [Usage("CosmereRP")]
+    [Description("Opens your RP journal. GameMaster+ may target a player to view/evaluate.")]
+    private static void CosmereRP_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            e.Mobile.SendMessage("RP journal requires a player character.");
+            return;
+        }
+
+        if (!CosmereRpJournal.IsEnabled)
+        {
+            pm.SendMessage("RP journal is disabled.");
+            return;
+        }
+
+        if (pm.AccessLevel >= AccessLevel.GameMaster)
+        {
+            pm.SendMessage("Open your journal, or target a player to evaluate.");
+            pm.Target = new CosmereRpTarget(pm);
+            return;
+        }
+
+        CosmereRpJournalGump.DisplayTo(pm);
+    }
+
+    [Usage("CosmereRPList [filter]")]
+    [Description("Lists online players with RP journal content (GameMaster+).")]
+    private static void CosmereRPList_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile.AccessLevel < AccessLevel.GameMaster)
+        {
+            e.Mobile.SendMessage("CosmereRPList requires GameMaster access.");
+            return;
+        }
+
+        CosmereRpListGump.DisplayTo(e.Mobile, e.ArgString?.Trim() ?? "");
+    }
+
+    private class CosmereRpTarget : Target
+    {
+        private readonly PlayerMobile _staff;
+
+        public CosmereRpTarget(PlayerMobile staff) : base(12, false, TargetFlags.None) => _staff = staff;
+
+        protected override void OnTarget(Mobile from, object targeted)
+        {
+            if (from != _staff)
+            {
+                return;
+            }
+
+            if (targeted is PlayerMobile subject)
+            {
+                CosmereRpJournalGump.DisplayTo(_staff, subject, staffMode: true);
+                return;
+            }
+
+            _staff.SendMessage("That is not a player. Opening your own journal.");
+            CosmereRpJournalGump.DisplayTo(_staff);
+        }
+
+        protected override void OnTargetCancel(Mobile from, TargetCancelType cancelType)
+        {
+            if (from == _staff)
+            {
+                CosmereRpJournalGump.DisplayTo(_staff);
+            }
         }
     }
 
