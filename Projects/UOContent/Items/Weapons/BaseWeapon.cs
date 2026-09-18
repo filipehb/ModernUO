@@ -885,6 +885,12 @@ public abstract partial class BaseWeapon
                 }
             }
 
+            // Cosmere hybrid combat: PC swings resolve as Strike (skip UO hit/damage).
+            if (Server.Engines.Cosmere.CosmereCombat.TryResolveSwing(attacker, defender, this))
+            {
+                return GetDelay(attacker);
+            }
+
             if (CheckHit(attacker, defender))
             {
                 OnHit(attacker, defender, damageBonus);
