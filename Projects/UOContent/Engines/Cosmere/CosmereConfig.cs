@@ -24,6 +24,15 @@ public static class CosmereConfig
     public static int MaxLevel { get; private set; } = 20;
     public static int Tier5HealthSoftCap { get; private set; }
     public static bool DebugEnabled { get; private set; } = true;
+    public static bool ProfessionEnabled { get; private set; } = true;
+    public static double ProfessionXpMultiplier { get; private set; } = 1.0;
+    public static bool LosVisibilityEnabled { get; private set; } = true;
+    public static bool HungerEffectsEnabled { get; private set; } = true;
+    public static double HungerDecayMinutes { get; private set; } = 5.0;
+    public static int HungerDecayAmount { get; private set; } = 1;
+    public static bool DayPeriodsEnabled { get; private set; } = true;
+    public static bool AnnouncePeriodChange { get; private set; }
+    public static int NightLightBonus { get; private set; }
 
     public static void Configure()
     {
@@ -47,8 +56,39 @@ public static class CosmereConfig
         MaxLevel = Math.Max(1, ServerConfiguration.GetOrUpdateSetting("Cosmere.MaxLevel", 20));
         Tier5HealthSoftCap = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.Tier5HealthSoftCap", 0));
         DebugEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.DebugEnabled", true);
+        ProfessionEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.ProfessionEnabled", true);
+        ProfessionXpMultiplier = Math.Max(
+            0.0,
+            ServerConfiguration.GetOrUpdateSetting("Cosmere.ProfessionXpMultiplier", 1.0)
+        );
+        LosVisibilityEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.LosVisibilityEnabled", true);
+        HungerEffectsEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.HungerEffectsEnabled", true);
+        HungerDecayMinutes = ServerConfiguration.GetOrUpdateSetting("Cosmere.HungerDecayMinutes", 5.0);
+        HungerDecayAmount = ServerConfiguration.GetOrUpdateSetting("Cosmere.HungerDecayAmount", 1);
+        DayPeriodsEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.DayPeriodsEnabled", true);
+        AnnouncePeriodChange = ServerConfiguration.GetOrUpdateSetting("Cosmere.AnnouncePeriodChange", false);
+        NightLightBonus = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.NightLightBonus", 0));
     }
 
     /// <summary>Test-only hook to flip the master debug switch without reloading config.</summary>
     internal static void SetDebugEnabledForTests(bool enabled) => DebugEnabled = enabled;
+
+    /// <summary>Test-only hook for profession master switch.</summary>
+    internal static void SetProfessionEnabledForTests(bool enabled) => ProfessionEnabled = enabled;
+
+    /// <summary>Test-only hook for profession XP multiplier.</summary>
+    internal static void SetProfessionXpMultiplierForTests(double multiplier) =>
+        ProfessionXpMultiplier = Math.Max(0.0, multiplier);
+
+    internal static void SetLosVisibilityEnabledForTests(bool enabled) => LosVisibilityEnabled = enabled;
+
+    internal static void SetHungerEffectsEnabledForTests(bool enabled) => HungerEffectsEnabled = enabled;
+
+    internal static void SetHungerDecayForTests(double minutes, int amount)
+    {
+        HungerDecayMinutes = minutes;
+        HungerDecayAmount = amount;
+    }
+
+    internal static void SetDayPeriodsEnabledForTests(bool enabled) => DayPeriodsEnabled = enabled;
 }

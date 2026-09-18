@@ -393,10 +393,12 @@ public abstract partial class BaseDoor : Item, ILockable, ITelekinesisable
 
     public virtual void OnOpened(Mobile from)
     {
+        Server.Engines.Cosmere.CosmereLosVisibility.RefreshAround(this, Map);
     }
 
     public virtual void OnClosed(Mobile from)
     {
+        Server.Engines.Cosmere.CosmereLosVisibility.RefreshAround(this, Map);
     }
 
     public override void OnDoubleClick(Mobile from)

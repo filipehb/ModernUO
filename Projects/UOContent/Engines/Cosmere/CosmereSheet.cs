@@ -8,7 +8,7 @@ namespace Server.Engines.Cosmere;
 /// </summary>
 public class CosmereSheet
 {
-    public const int SheetVersion = 3;
+    public const int SheetVersion = 4;
 
     private readonly int[] _skillRanks = new int[CosmereSkills.Count];
 
@@ -39,6 +39,10 @@ public class CosmereSheet
     public int PendingSkillRanks { get; set; }
     public int PendingTalentPicks { get; set; }
 
+    public CosmereProfessionId ProfessionId { get; set; }
+    public int ProfessionRank { get; set; }
+    public int ProfessionXp { get; set; }
+
     public List<string> Expertises { get; } = [];
     public List<string> Talents { get; } = [];
     public List<CosmereGoalRecord> Goals { get; } = [];
@@ -46,7 +50,11 @@ public class CosmereSheet
     public List<CosmereInjuryRecord> Injuries { get; } = [];
 
     public int MaxHealth => 10 + Strength + LevelHealthBonus;
-    public int MaxFocus => 2 + Willpower;
+
+    /// <summary>Non-serialized soft penalty from sustenance (low hunger/thirst).</summary>
+    public int FocusSoftPenalty { get; set; }
+
+    public int MaxFocus => Math.Max(0, 2 + Willpower - FocusSoftPenalty);
     public int MaxInvestiture =>
         IsMetalborn ? 2 + Math.Max(Awareness, Presence) : 0;
 
@@ -527,6 +535,11 @@ public class CosmereSheet
         {
             Goals[i].Serialize(writer);
         }
+
+        // v4+
+        writer.Write((int)ProfessionId);
+        writer.Write(ProfessionRank);
+        writer.Write(ProfessionXp);
     }
 
     public void Deserialize(IGenericReader reader)
@@ -577,6 +590,9 @@ public class CosmereSheet
         PendingAttrPoints = 0;
         PendingSkillRanks = 0;
         PendingTalentPicks = 0;
+        ProfessionId = CosmereProfessionId.None;
+        ProfessionRank = 0;
+        ProfessionXp = 0;
 
         if (version >= 1)
         {
@@ -623,6 +639,13 @@ public class CosmereSheet
             {
                 Goals.Add(CosmereGoalRecord.Deserialize(reader));
             }
+        }
+
+        if (version >= 4)
+        {
+            ProfessionId = (CosmereProfessionId)reader.ReadInt();
+            ProfessionRank = reader.ReadInt();
+            ProfessionXp = reader.ReadInt();
         }
 
         ClampPools();

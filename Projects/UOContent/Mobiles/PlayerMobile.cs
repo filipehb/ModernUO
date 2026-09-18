@@ -1166,6 +1166,13 @@ namespace Server.Mobiles
         {
             global = LightCycle.ComputeLevelFor(this);
 
+            if (CosmereConfig.DayPeriodsEnabled
+                && CosmereConfig.NightLightBonus > 0
+                && CosmereTime.GetPeriod(this) == CosmereDayPeriod.Night)
+            {
+                global = Math.Min(28, global + CosmereConfig.NightLightBonus);
+            }
+
             var racialNightSight = Core.ML && Race == Race.Elf;
 
             if (LightLevel < 21 && (AosAttributes.GetValue(this, AosAttribute.NightSight) > 0 || racialNightSight))
@@ -3333,7 +3340,12 @@ namespace Server.Mobiles
                 }
             }
 
-            return base.CanSee(m);
+            if (!base.CanSee(m))
+            {
+                return false;
+            }
+
+            return CosmereLosVisibility.CanSeeMobile(this, m);
         }
 
         public virtual void CheckedAnimate(int action, int frameCount, int repeatCount, bool forward, bool repeat, int delay)
@@ -3345,7 +3357,9 @@ namespace Server.Mobiles
         }
 
         public override bool CanSee(Item item) =>
-            DesignContext?.Foundation.IsHiddenToCustomizer(item) != true && base.CanSee(item);
+            DesignContext?.Foundation.IsHiddenToCustomizer(item) != true
+            && base.CanSee(item)
+            && CosmereLosVisibility.CanSeeItem(this, item);
 
         public override void OnAfterDelete()
         {

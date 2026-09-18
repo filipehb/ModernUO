@@ -55,6 +55,11 @@ public static class CosmereCommands
         CommandSystem.Register("CosmereGoal", AccessLevel.GameMaster, CosmereGoal_OnCommand);
         CommandSystem.Register("CosmereAdvancement", AccessLevel.Player, CosmereAdvancement_OnCommand);
         CommandSystem.Register("CosmereDebug", AccessLevel.Player, CosmereDebug_OnCommand);
+        CommandSystem.Register("CosmereProfession", AccessLevel.Player, CosmereProfession_OnCommand);
+        CommandSystem.Register("CosmereGather", AccessLevel.Player, CosmereGather_OnCommand);
+        CommandSystem.Register("CosmereCraft", AccessLevel.Player, CosmereCraft_OnCommand);
+        CommandSystem.Register("CosmereTrade", AccessLevel.Player, CosmereTrade_OnCommand);
+        CommandSystem.Register("CosmereTime", AccessLevel.Player, CosmereTime_OnCommand);
     }
 
     [Usage("CosmereSheet")]
@@ -919,6 +924,7 @@ public static class CosmereCommands
             $"Pending attr {sheet.PendingAttrPoints} / skills {sheet.PendingSkillRanks} / talents {sheet.PendingTalentPicks}."
         );
         pm.SendMessage($"Talents ({sheet.Talents.Count}): {(sheet.Talents.Count == 0 ? "(none)" : string.Join(", ", sheet.Talents))}");
+        pm.SendMessage(CosmereProfession.Describe(sheet));
         CosmereGoals.List(pm);
     }
 
@@ -939,6 +945,121 @@ public static class CosmereCommands
 
         pm.CosmereDebug = !pm.CosmereDebug;
         pm.SendMessage(pm.CosmereDebug ? "Cosmere debug ON." : "Cosmere debug OFF.");
+    }
+
+    [Usage("CosmereTime")]
+    [Description("Shows the current Cosmere day period and UO clock hours.")]
+    private static void CosmereTime_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        if (!CosmereConfig.DayPeriodsEnabled)
+        {
+            pm.SendMessage("Cosmere day periods are disabled on this shard.");
+            return;
+        }
+
+        Clock.GetTime(pm.Map, pm.X, pm.Y, out var hours, out int minutes);
+        var period = CosmereTime.GetPeriod(hours);
+        pm.SendMessage(
+            $"Cosmere time: {CosmereTime.Describe(period)} ({hours:D2}:{minutes:D2})."
+        );
+    }
+
+    [Usage("CosmereProfession [assign|xp|setrank …]")]
+    [Description("Dump or manage the parallel Profession track (Artisan/Producer/Merchant).")]
+    private static void CosmereProfession_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        pm.EnsureCosmereSheet();
+
+        if (e.Length == 0)
+        {
+            pm.SendMessage(CosmereProfession.Describe(pm.CosmereSheet));
+            return;
+        }
+
+        var verb = e.GetString(0);
+        if (verb.Equals("assign", StringComparison.OrdinalIgnoreCase))
+        {
+            if (e.Length < 2 || !CosmereProfession.TryParse(e.GetString(1), out var id))
+            {
+                pm.SendMessage("Usage: CosmereProfession assign <Artisan|Producer|Merchant|none>");
+                return;
+            }
+
+            CosmereProfession.Assign(pm, id);
+            return;
+        }
+
+        if (verb.Equals("xp", StringComparison.OrdinalIgnoreCase))
+        {
+            if (e.Mobile.AccessLevel < AccessLevel.GameMaster || e.Length < 2)
+            {
+                pm.SendMessage("Usage (GM): CosmereProfession xp <amount>");
+                return;
+            }
+
+            CosmereProfession.AddXp(pm, Math.Max(0, e.GetInt32(1)), "GM grant");
+            return;
+        }
+
+        if (verb.Equals("setrank", StringComparison.OrdinalIgnoreCase))
+        {
+            if (e.Mobile.AccessLevel < AccessLevel.GameMaster || e.Length < 2)
+            {
+                pm.SendMessage("Usage (GM): CosmereProfession setrank <0-5>");
+                return;
+            }
+
+            CosmereProfession.SetRank(pm, e.GetInt32(1));
+            return;
+        }
+
+        pm.SendMessage("Usage: CosmereProfession | assign <id> | xp <n> | setrank <n>");
+    }
+
+    [Usage("CosmereGather")]
+    [Description("Stub Producer gather action — awards Profession XP if Profession is Producer.")]
+    private static void CosmereGather_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        CosmereProfession.TryProfessionAction(pm, CosmereProfessionId.Producer, "Gather");
+    }
+
+    [Usage("CosmereCraft")]
+    [Description("Stub Artisan craft action — awards Profession XP if Profession is Artisan.")]
+    private static void CosmereCraft_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        CosmereProfession.TryProfessionAction(pm, CosmereProfessionId.Artisan, "Craft");
+    }
+
+    [Usage("CosmereTrade")]
+    [Description("Stub Merchant trade action — awards Profession XP if Profession is Merchant.")]
+    private static void CosmereTrade_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        CosmereProfession.TryProfessionAction(pm, CosmereProfessionId.Merchant, "Trade");
     }
 
     private static BaseWeapon FindOffhandWeapon(PlayerMobile pm)

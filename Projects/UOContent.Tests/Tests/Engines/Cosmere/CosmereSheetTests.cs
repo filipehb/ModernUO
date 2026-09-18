@@ -152,6 +152,9 @@ public class CosmereSheetTests
                 RewardPayload = ""
             }
         );
+        original.ProfessionId = CosmereProfessionId.Artisan;
+        original.ProfessionRank = 3;
+        original.ProfessionXp = 120;
 
         var writer = new BufferWriter(true);
         original.Serialize(writer);
@@ -195,5 +198,8 @@ public class CosmereSheetTests
         Assert.Single(copy.Goals);
         Assert.Equal(CosmereGoals.TrainYourPowerId, copy.Goals[0].Id);
         Assert.Equal(CosmereGoalStatus.Active, copy.Goals[0].Status);
+        Assert.Equal(CosmereProfessionId.Artisan, copy.ProfessionId);
+        Assert.Equal(3, copy.ProfessionRank);
+        Assert.Equal(120, copy.ProfessionXp);
     }
 }

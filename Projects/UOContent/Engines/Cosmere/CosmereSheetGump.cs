@@ -28,7 +28,7 @@ public class CosmereSheetGump : DynamicGump
     {
         var sheet = _player.CosmereSheet;
         const int width = 520;
-        const int height = 820;
+        const int height = 860;
 
         builder.AddPage();
         builder.AddBackground(0, 0, width, height, 0x13BE);
@@ -44,6 +44,31 @@ public class CosmereSheetGump : DynamicGump
             0x481,
             $"Pending Attr {sheet.PendingAttrPoints}  Skills {sheet.PendingSkillRanks}  Talents {sheet.PendingTalentPicks}"
         );
+        y += 18;
+        builder.AddLabel(
+            20,
+            y,
+            0x481,
+            $"Hunger {_player.Hunger}/20  Thirst {_player.Thirst}/20  Time {CosmereTime.Describe(CosmereTime.GetPeriod(_player))}"
+        );
+        y += 18;
+        if (sheet.ProfessionId == CosmereProfessionId.None)
+        {
+            builder.AddLabel(20, y, 0x481, "Profession: (none)");
+        }
+        else
+        {
+            var nextXp = sheet.ProfessionRank >= CosmereProfession.MaxRank
+                ? "max"
+                : $"{sheet.ProfessionXp}/{CosmereProfession.GetXpToReachRank(sheet.ProfessionRank + 1)}";
+            builder.AddLabel(
+                20,
+                y,
+                0x481,
+                $"Profession {sheet.ProfessionId} R{sheet.ProfessionRank} Tier {CosmereProfession.GetRecipeTier(sheet.ProfessionRank)} XP {nextXp}"
+            );
+        }
+
         y += 22;
 
         builder.AddLabel(20, y, 0x480, "Attributes");

@@ -60,6 +60,22 @@ public enum CosmerePowerTier
     Full = 2
 }
 
+public enum CosmereProfessionId
+{
+    None = 0,
+    Artisan = 1,
+    Producer = 2,
+    Merchant = 3
+}
+
+public enum CosmereDayPeriod
+{
+    Morning = 0,
+    Afternoon = 1,
+    Evening = 2,
+    Night = 3
+}
+
 public enum CosmereGoalStatus
 {
     Active = 0,

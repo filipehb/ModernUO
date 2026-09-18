@@ -1,3 +1,4 @@
+using System;
 using Sheet = Server.Engines.Cosmere.CosmereSheet;
 using Server.Engines.Cosmere;
 
@@ -12,6 +13,12 @@ public partial class PlayerMobile
 
     /// <summary>Session-only Cosmere debug SysMessages. Not serialized.</summary>
     public bool CosmereDebug { get; set; }
+
+    /// <summary>Session-only last announced day period. Not serialized.</summary>
+    public CosmereDayPeriod? CosmereLastDayPeriod { get; set; }
+
+    /// <summary>Session-only throttle for sustenance reminders. Not serialized.</summary>
+    public DateTime CosmereSustenanceLastReminder { get; set; }
 
     /// <summary>Reentrant guard so Cosmere→Hits sync does not re-enter Damage conversion.</summary>
     internal int _cosmereDamageDepth;
@@ -52,5 +59,23 @@ public partial class PlayerMobile
     {
         EnsureCosmereSheet();
         CosmereFacade.Apply(this);
+    }
+
+    public override void OnHungerChanged(int oldValue)
+    {
+        base.OnHungerChanged(oldValue);
+        if (HasCosmereSheet)
+        {
+            CosmereSustenance.Sync(this);
+        }
+    }
+
+    public override void OnThirstChanged(int oldValue)
+    {
+        base.OnThirstChanged(oldValue);
+        if (HasCosmereSheet)
+        {
+            CosmereSustenance.Sync(this);
+        }
     }
 }

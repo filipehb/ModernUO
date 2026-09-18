@@ -7,6 +7,11 @@ namespace Server.Engines.Cosmere;
 
 public static class CosmereBootstrap
 {
+    public static void Initialize()
+    {
+        CosmereTime.Initialize();
+    }
+
     [OnEvent(nameof(CharCreation.CharacterCreatedEvent))]
     public static void OnCharacterCreated(CharacterCreatedEventArgs args)
     {
@@ -25,6 +30,8 @@ public static class CosmereBootstrap
         pm.EnsureCosmereSheet();
         CosmereFacade.Apply(pm);
         CosmereEquipment.SyncCumbersome(pm);
+        CosmereSustenance.Sync(pm);
+        pm.CosmereLastDayPeriod = CosmereTime.GetPeriod(pm);
 
         var sheet = pm.CosmereSheet;
         if (!sheet.Dead)
