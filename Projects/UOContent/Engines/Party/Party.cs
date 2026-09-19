@@ -154,7 +154,29 @@ namespace Server.Engines.PartySystem
                 }
                 else
                 {
-                    p.SendPublicMessage(from, $"I was killed by {m.Name} !!");
+                    foreach (var mi in p.Members)
+                    {
+                        var member = mi.Mobile;
+                        if (member?.NetState == null)
+                        {
+                            continue;
+                        }
+
+                        var text = $"I was killed by {m.GetNameFor(member)} !!";
+                        member.NetState.SendPartyTextMessage(from.Serial, text, true);
+                    }
+
+                    foreach (var listener in p.m_Listeners)
+                    {
+                        if (listener?.NetState == null)
+                        {
+                            continue;
+                        }
+
+                        listener.SendMessage(
+                            $"[{from.GetNameFor(listener)}]: I was killed by {m.GetNameFor(listener)} !!"
+                        );
+                    }
                 }
             }
         }
@@ -229,10 +251,40 @@ namespace Server.Engines.PartySystem
                 return;
             }
 
-            var buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(from.Name, "")]
+            var buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(30, 0)]
                 .InitializePacket();
-            var length = OutgoingMessagePackets.CreateMessageLocalizedAffix(
-                buffer,
+
+            foreach (var mi in Members)
+            {
+                var member = mi.Mobile;
+                if (member?.NetState == null)
+                {
+                    continue;
+                }
+
+                var displayName = from.GetNameFor(member);
+                var length = OutgoingMessagePackets.CreateMessageLocalizedAffix(
+                    buffer,
+                    Serial.MinusOne,
+                    -1,
+                    MessageType.Label,
+                    0x3B2,
+                    3,
+                    1008094,
+                    "",
+                    AffixType.Prepend | AffixType.System,
+                    displayName
+                );
+
+                // : joined the party.
+                member.NetState.Send(buffer[..length]);
+            }
+
+            // Staff listeners see the real name.
+            var staffBuffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(from.RawName, "")]
+                .InitializePacket();
+            var staffLength = OutgoingMessagePackets.CreateMessageLocalizedAffix(
+                staffBuffer,
                 Serial.MinusOne,
                 -1,
                 MessageType.Label,
@@ -241,13 +293,10 @@ namespace Server.Engines.PartySystem
                 1008094,
                 "",
                 AffixType.Prepend | AffixType.System,
-                from.Name
+                from.RawName
             );
-
-            // : joined the party.
-            buffer = buffer[..length];
-            SendToAll(buffer);
-            SendToAllListeners(buffer);
+            SendToAllListeners(staffBuffer[..staffLength]);
+            SendToStaffMessage(from, $"{from.RawName} joined the party.");
 
             from.SendLocalizedMessage(1005445); // You have been added to the party.
 
@@ -258,7 +307,7 @@ namespace Server.Engines.PartySystem
         public void OnDecline(Mobile from, Mobile leader)
         {
             // : Does not wish to join the party.
-            leader.SendLocalizedMessage(1008091, false, from.Name);
+            leader.SendLocalizedMessage(1008091, false, from.GetNameFor(leader));
 
             from.SendLocalizedMessage(1008092); // You notify them that you do not wish to join the party.
 
@@ -405,15 +454,15 @@ namespace Server.Engines.PartySystem
             PartyPackets.CreatePartyTextMessage(textMessagePacket, from.Serial, text, true);
             SendToAll(textMessagePacket);
 
-            SendToAllListeners($"[{from.Name}]: {text}");
+            SendToAllListeners($"[{from.RawName}]: {text}");
             SendToStaffMessage(from, $"[Party]: {text}");
         }
 
         public void SendPrivateMessage(Mobile from, Mobile to, string text)
         {
             to.NetState.SendPartyTextMessage(from.Serial, text, false);
-            SendToAllListeners($"[{from.Name}]->[{to.Name}]: {text}");
-            SendToStaffMessage(from, $"[Party]->[{to.Name}]: {text}");
+            SendToAllListeners($"[{from.RawName}]->[{to.RawName}]: {text}");
+            SendToStaffMessage(from, $"[Party]->[{to.RawName}]: {text}");
         }
 
         private void SendToStaffMessage(Mobile from, string text)
@@ -503,7 +552,7 @@ namespace Server.Engines.PartySystem
                 m_Mobile.SendLocalizedMessage(1005437); // You have rejoined the party.
                 m_Mobile.NetState.SendPartyMemberList(p);
 
-                var buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(m_Mobile.Name, "")]
+                var buffer = stackalloc byte[OutgoingMessagePackets.GetMaxMessageLocalizedAffixLength(30, 0)]
                     .InitializePacket();
                 var attrsPacket = stackalloc byte[OutgoingMobilePackets.MobileAttributesPacketLength].InitializePacket();
 
@@ -528,15 +577,10 @@ namespace Server.Engines.PartySystem
                         1008087,
                         "",
                         AffixType.Prepend | AffixType.System,
-                        m_Mobile.Name
+                        m_Mobile.GetNameFor(m)
                     );
 
-                    if (length != buffer.Length)
-                    {
-                        buffer = buffer[..length]; // Adjust to the actual size
-                    }
-
-                    m.NetState?.Send(buffer);
+                    m.NetState?.Send(buffer[..length]);
                     m.NetState.SendMobileStatusCompact(m_Mobile, m_Mobile.CanBeRenamedBy(m));
                     OutgoingMobilePackets.CreateMobileAttributes(attrsPacket, m_Mobile, true);
                     m.NetState?.Send(attrsPacket);

@@ -309,7 +309,7 @@ public static class OutgoingMobilePackets
         writer.Write((byte)0x98); // Packet ID
         writer.Write((ushort)37);
         writer.Write(m.Serial);
-        writer.WriteLatin1(m.Name ?? "", 29);
+        writer.WriteLatin1(m.GetNameFor(ns.Mobile) ?? "", 29);
         writer.Write((byte)0); // Null terminator
 
         ns.Send(writer.Span);
@@ -429,7 +429,10 @@ public static class OutgoingMobilePackets
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void CreateMobileStatusCompact(Span<byte> buffer, Mobile m, bool canBeRenamed) =>
-        CreateMobileStatus(buffer, m, 0, canBeRenamed);
+        CreateMobileStatus(buffer, m, 0, canBeRenamed, m.Name);
+
+    public static void CreateMobileStatusCompact(Span<byte> buffer, Mobile m, bool canBeRenamed, string displayName) =>
+        CreateMobileStatus(buffer, m, 0, canBeRenamed, displayName);
 
     public static void SendMobileStatusCompact(this NetState ns, Mobile m, bool canBeRenamed)
     {
@@ -439,7 +442,7 @@ public static class OutgoingMobilePackets
         }
 
         var buffer = stackalloc byte[MobileStatusCompactLength].InitializePacket();
-        CreateMobileStatusCompact(buffer, m, canBeRenamed);
+        CreateMobileStatusCompact(buffer, m, canBeRenamed, m.GetNameFor(ns.Mobile));
 
         ns.Send(buffer);
     }
@@ -490,18 +493,29 @@ public static class OutgoingMobilePackets
         }
 
         var buffer = stackalloc byte[length].InitializePacket();
-        CreateMobileStatus(buffer, beheld, version, beheld.CanBeRenamedBy(beholder));
+        CreateMobileStatus(
+            buffer,
+            beheld,
+            version,
+            beheld.CanBeRenamedBy(beholder),
+            beheld.GetNameFor(beholder)
+        );
         ns.Send(buffer);
     }
 
-    public static void CreateMobileStatus(Span<byte> buffer, Mobile beheld, int version, bool canBeRenamed)
+    public static void CreateMobileStatus(Span<byte> buffer, Mobile beheld, int version, bool canBeRenamed) =>
+        CreateMobileStatus(buffer, beheld, version, canBeRenamed, beheld.Name);
+
+    public static void CreateMobileStatus(
+        Span<byte> buffer, Mobile beheld, int version, bool canBeRenamed, string displayName
+    )
     {
         if (buffer[0] != 0)
         {
             return;
         }
 
-        var name = beheld.Name ?? "";
+        var name = displayName ?? "";
 
         var writer = new SpanWriter(buffer);
         writer.Write((byte)0x11); // Packet ID

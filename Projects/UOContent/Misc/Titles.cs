@@ -316,16 +316,16 @@ namespace Server.Misc
                                 {
                                     if (beheld.Female)
                                     {
-                                        title.Append($"{ke.m_Title}Lady {beheld.Name}");
+                                        title.Append($"{ke.m_Title}Lady {beheld.GetNameFor(beholder)}");
                                     }
                                     else
                                     {
-                                        title.Append($"{ke.m_Title}Lord {beheld.Name}");
+                                        title.Append($"{ke.m_Title}Lord {beheld.GetNameFor(beholder)}");
                                     }
                                 }
                                 else
                                 {
-                                    title.Append($"{ke.m_Title}{beheld.Name}");
+                                    title.Append($"{ke.m_Title}{beheld.GetNameFor(beholder)}");
                                 }
                                 break;
                             }
@@ -337,7 +337,7 @@ namespace Server.Misc
             }
             else
             {
-                title.Append(beheld.Name);
+                title.Append(beheld.GetNameFor(beholder));
             }
 
             if (beheld is PlayerMobile mobile && mobile.DisplayChampionTitle)

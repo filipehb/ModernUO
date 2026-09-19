@@ -2839,6 +2839,11 @@ namespace Server.Mobiles
 
             switch (version)
             {
+                case 36: // Cosmere known names
+                    {
+                        CosmereKnownNames.Deserialize(this, reader);
+                        goto case 35;
+                    }
                 case 35: // CosmereSheet
                     {
                         _cosmereSheet = new global::Server.Engines.Cosmere.CosmereSheet();
@@ -3192,7 +3197,9 @@ namespace Server.Mobiles
         {
             base.Serialize(writer);
 
-            writer.Write(35); // version — CosmereSheet
+            writer.Write(36); // version — Cosmere known names
+
+            CosmereKnownNames.Serialize(this, writer);
 
             _cosmereSheet ??= global::Server.Engines.Cosmere.CosmereSheet.CreateMundaneStarter();
             _cosmereSheet.Serialize(writer);

@@ -66,6 +66,8 @@ public static class CosmereCommands
         CommandSystem.Register("CosmereRP", AccessLevel.Player, CosmereRP_OnCommand);
         CommandSystem.Register("CosmereRPList", AccessLevel.GameMaster, CosmereRPList_OnCommand);
         CommandSystem.Register("CosmereEvent", AccessLevel.Counselor, CosmereEvent_OnCommand);
+        CommandSystem.Register("r", AccessLevel.Player, Recognize_OnCommand);
+        CommandSystem.Register("Recognize", AccessLevel.Player, Recognize_OnCommand);
     }
 
     [Usage("CosmereSheet")]
@@ -1140,6 +1142,25 @@ public static class CosmereCommands
                 CosmereEventListGump.DisplayTo(e.Mobile);
                 break;
         }
+    }
+
+    [Usage("r")]
+    [Description("Target a player to set how you know them (RP known names). Alias: Recognize")]
+    private static void Recognize_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is not PlayerMobile pm)
+        {
+            return;
+        }
+
+        if (!CosmereKnownNames.IsEnabled)
+        {
+            pm.SendMessage("Known names are disabled.");
+            return;
+        }
+
+        pm.SendMessage("Target a player to recognize.");
+        pm.Target = new CosmereRecognizeTarget(pm);
     }
 
     private class CosmereRpTarget : Target

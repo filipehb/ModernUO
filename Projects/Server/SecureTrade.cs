@@ -39,7 +39,7 @@ public class SecureTrade
         from.NetState.SendUpdateSecureTrade(From.Container, false, false);
         from.NetState.SendSecureTradeEquip(From.Container, from);
 
-        from.NetState.SendDisplaySecureTrade(to, From.Container, To.Container, to.Name);
+        from.NetState.SendDisplaySecureTrade(to, From.Container, To.Container, to.GetNameFor(from));
         from.NetState.SendUpdateSecureTrade(From.Container, false, false);
 
         if (from.Account != null && from704565)
@@ -59,7 +59,7 @@ public class SecureTrade
         to.NetState.SendUpdateSecureTrade(To.Container, false, false);
         to.NetState.SendSecureTradeEquip(To.Container, to);
 
-        to.NetState.SendDisplaySecureTrade(from, To.Container, From.Container, from.Name);
+        to.NetState.SendDisplaySecureTrade(from, To.Container, From.Container, from.GetNameFor(to));
         to.NetState.SendUpdateSecureTrade(To.Container, false, false);
 
         if (to.Account != null && to704565)

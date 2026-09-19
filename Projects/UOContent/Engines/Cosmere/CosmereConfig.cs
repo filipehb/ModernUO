@@ -41,6 +41,8 @@ public static class CosmereConfig
     public static bool PossessEnabled { get; private set; } = true;
     public static bool RpJournalEnabled { get; private set; } = true;
     public static bool EventsEnabled { get; private set; } = true;
+    public static bool KnownNamesEnabled { get; private set; } = true;
+    public static string UnknownNameDisplay { get; private set; } = "A stranger";
 
     public static void Configure()
     {
@@ -84,6 +86,12 @@ public static class CosmereConfig
         PossessEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.PossessEnabled", true);
         RpJournalEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.RpJournalEnabled", true);
         EventsEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.EventsEnabled", true);
+        KnownNamesEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.KnownNamesEnabled", true);
+        UnknownNameDisplay = ServerConfiguration.GetOrUpdateSetting("Cosmere.UnknownNameDisplay", "A stranger");
+        if (string.IsNullOrWhiteSpace(UnknownNameDisplay))
+        {
+            UnknownNameDisplay = "A stranger";
+        }
     }
 
     /// <summary>Test-only hook to flip the master debug switch without reloading config.</summary>
@@ -115,4 +123,9 @@ public static class CosmereConfig
     internal static void SetRpJournalEnabledForTests(bool enabled) => RpJournalEnabled = enabled;
 
     internal static void SetEventsEnabledForTests(bool enabled) => EventsEnabled = enabled;
+
+    internal static void SetKnownNamesEnabledForTests(bool enabled) => KnownNamesEnabled = enabled;
+
+    internal static void SetUnknownNameDisplayForTests(string value) =>
+        UnknownNameDisplay = string.IsNullOrWhiteSpace(value) ? "A stranger" : value;
 }

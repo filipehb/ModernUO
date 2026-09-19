@@ -1460,6 +1460,12 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
         }
     }
 
+    /// <summary>
+    ///     Name shown to a specific viewer. Default is <see cref="Name"/>.
+    ///     Content can override for per-viewer labels (e.g. RP known-names).
+    /// </summary>
+    public virtual string GetNameFor(Mobile viewer) => Name;
+
     [CommandProperty(AccessLevel.GameMaster)]
     public DateTime LastStrGain { get; set; }
 
@@ -2937,13 +2943,12 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             return;
         }
 
-        var statBufferTrue = stackalloc byte[OutgoingMobilePackets.MobileStatusCompactLength].InitializePacket();
-        var statBufferFalse = stackalloc byte[OutgoingMobilePackets.MobileStatusCompactLength].InitializePacket();
         var hbpBuffer = stackalloc byte[OutgoingMobilePackets.MobileHealthbarPacketLength].InitializePacket();
         var hbyBuffer = stackalloc byte[OutgoingMobilePackets.MobileHealthbarPacketLength].InitializePacket();
         var deadBuffer = stackalloc byte[OutgoingMobilePackets.BondedStatusPacketLength].InitializePacket();
         var removeEntity = stackalloc byte[OutgoingEntityPackets.RemoveEntityLength].InitializePacket();
         var hitsPacket = stackalloc byte[OutgoingMobilePackets.MobileAttributePacketLength].InitializePacket();
+        var statusBuffer = stackalloc byte[OutgoingMobilePackets.MobileStatusCompactLength].InitializePacket();
         mobileMovingCache.InitializePacket();
 
         foreach (var state in Map.GetClientsInRange(m_Location))
@@ -2994,16 +2999,16 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
 
             if (sendPublicStats)
             {
-                if (CanBeRenamedBy(beholder))
-                {
-                    OutgoingMobilePackets.CreateMobileStatusCompact(statBufferTrue, this, true);
-                    state.Send(statBufferTrue);
-                }
-                else
-                {
-                    OutgoingMobilePackets.CreateMobileStatusCompact(statBufferFalse, this, false);
-                    state.Send(statBufferFalse);
-                }
+                // Per-viewer name: rewrite compact status for each beholder.
+                statusBuffer[0] = 0;
+                OutgoingMobilePackets.CreateMobileStatus(
+                    statusBuffer,
+                    this,
+                    0,
+                    CanBeRenamedBy(beholder),
+                    GetNameFor(beholder)
+                );
+                state.Send(statusBuffer);
             }
             else if (sendHits)
             {
@@ -3323,7 +3328,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
                 hue = Notoriety.GetHue(Notoriety.Compute(from, this));
             }
 
-            from.NetState.SendMessageLocalized(Serial, Body, MessageType.Label, hue, 3, opl.Header, Name, opl.HeaderArgs);
+            from.NetState.SendMessageLocalized(Serial, Body, MessageType.Label, hue, 3, opl.Header, GetNameFor(from), opl.HeaderArgs);
         }
     }
 
@@ -5687,7 +5692,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
                         3,
                         false,
                         m_Language,
-                        Name,
+                        GetNameFor(heard),
                         text
                     );
 
@@ -5710,7 +5715,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
                         3,
                         false,
                         m_Language,
-                        Name,
+                        GetNameFor(heard),
                         mutatedText
                     );
 
@@ -8055,7 +8060,7 @@ public partial class Mobile : IHued, IComparable<Mobile>, ISpawnable, IObjectPro
             hue = Notoriety.GetHue(Notoriety.Compute(from, this));
         }
 
-        var name = Name ?? "";
+        var name = GetNameFor(from) ?? "";
 
         var prefix = "";
 

@@ -214,7 +214,9 @@ public partial class Corpse : Container, ICarvable
         Movable = false;
         Hue = owner.Hue;
         Direction = owner.Direction;
-        Name = owner.Name;
+        Name = owner is PlayerMobile && Server.Engines.Cosmere.CosmereKnownNames.IsEnabled
+            ? Server.Engines.Cosmere.CosmereConfig.UnknownNameDisplay
+            : owner.Name;
 
         _owner = owner;
 
@@ -1078,20 +1080,41 @@ public partial class Corpse : Container, ICarvable
         }
     }
 
+    private string GetDisplayNameFor(Mobile viewer)
+    {
+        if (viewer != null && _owner is PlayerMobile && Server.Engines.Cosmere.CosmereKnownNames.IsEnabled)
+        {
+            return _owner.GetNameFor(viewer);
+        }
+
+        return Name;
+    }
+
     public override void OnAosSingleClick(Mobile from)
     {
         var hue = Notoriety.GetHue(NotorietyHandlers.CorpseNotoriety(from, this));
         var opl = PropertyList;
+        var displayName = GetDisplayNameFor(from);
 
         if (opl.Header > 0)
         {
-            from.NetState.SendMessageLocalized(Serial, ItemID, MessageType.Label, hue, 3, opl.Header, Name, opl.HeaderArgs);
+            from.NetState.SendMessageLocalized(
+                Serial,
+                ItemID,
+                MessageType.Label,
+                hue,
+                3,
+                opl.Header,
+                displayName,
+                opl.HeaderArgs
+            );
         }
     }
 
     public override void OnSingleClick(Mobile from)
     {
         var hue = Notoriety.GetHue(NotorietyHandlers.CorpseNotoriety(from, this));
+        var displayName = GetDisplayNameFor(from);
 
         if (ItemID == 0x2006) // Corpse form
         {
@@ -1101,12 +1124,12 @@ public partial class Corpse : Container, ICarvable
             }
             else
             {
-                from.NetState.SendMessageLocalized(Serial, ItemID, MessageType.Label, hue, 3, 1046414, "", Name);
+                from.NetState.SendMessageLocalized(Serial, ItemID, MessageType.Label, hue, 3, 1046414, "", displayName);
             }
         }
         else // Bone form
         {
-            from.NetState.SendMessageLocalized(Serial, ItemID, MessageType.Label, hue, 3, 1046414, "", Name);
+            from.NetState.SendMessageLocalized(Serial, ItemID, MessageType.Label, hue, 3, 1046414, "", displayName);
         }
     }
 
