@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "ashen-skirmish",
+  "title": "Ashen Skirmish",
+  "summary": "Raiders press a road under falling ash.",
+  "staffNotes": "Sample global event. Start manually.",
+  "scope": "Global",
+  "enabled": true,
+  "startMode": "Manual",
+  "endMode": "Duration",
+  "durationMinutes": 60,
+  "maxConcurrentInstances": 1,
+  "startTriggers": [],
+  "phases": [
+    {
+      "id": "main",
+      "title": "Skirmish",
+      "onEnter": [
+        {
+          "type": "Announce",
+          "message": "Ash drifts thick on the eastern roads — steel rings in the distance.",
+          "audience": "All"
+        },
+        {
+          "type": "GrantGoal",
+          "goalId": "ashen-skirmish",
+          "goalTitle": "Stand the Ashen Road"
+        }
+      ],
+      "triggers": [],
+      "autoAdvanceAfterMinutes": null
+    }
+  ]
+}

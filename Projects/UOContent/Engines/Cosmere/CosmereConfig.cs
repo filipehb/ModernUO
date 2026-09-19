@@ -40,6 +40,7 @@ public static class CosmereConfig
     public static int LivingWorldHuntRange { get; private set; } = 12;
     public static bool PossessEnabled { get; private set; } = true;
     public static bool RpJournalEnabled { get; private set; } = true;
+    public static bool EventsEnabled { get; private set; } = true;
 
     public static void Configure()
     {
@@ -82,6 +83,7 @@ public static class CosmereConfig
         LivingWorldHuntRange = Math.Max(0, ServerConfiguration.GetOrUpdateSetting("Cosmere.LivingWorldHuntRange", 12));
         PossessEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.PossessEnabled", true);
         RpJournalEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.RpJournalEnabled", true);
+        EventsEnabled = ServerConfiguration.GetOrUpdateSetting("Cosmere.EventsEnabled", true);
     }
 
     /// <summary>Test-only hook to flip the master debug switch without reloading config.</summary>
@@ -111,4 +113,6 @@ public static class CosmereConfig
     internal static void SetStaffWakesLivingWorldForTests(bool enabled) => StaffWakesLivingWorld = enabled;
 
     internal static void SetRpJournalEnabledForTests(bool enabled) => RpJournalEnabled = enabled;
+
+    internal static void SetEventsEnabledForTests(bool enabled) => EventsEnabled = enabled;
 }

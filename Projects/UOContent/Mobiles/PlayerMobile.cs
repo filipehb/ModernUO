@@ -2298,6 +2298,11 @@ namespace Server.Mobiles
 
             DuelContext?.OnLocationChanged(this);
 
+            if (CosmereConfig.EventsEnabled)
+            {
+                Server.Engines.Cosmere.Events.CosmereEventRuntime.NotifyMovement(this, oldLocation, Location, Map);
+            }
+
             var context = DesignContext;
 
             if (context == null || m_NoRecursion)

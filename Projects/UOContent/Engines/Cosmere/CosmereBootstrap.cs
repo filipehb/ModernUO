@@ -1,5 +1,6 @@
 using ModernUO.CodeGeneratedEvents;
 using Server.Engines.CharacterCreation;
+using Server.Engines.Cosmere.Events;
 using Server.Mobiles;
 using CharCreation = Server.Engines.CharacterCreation.CharacterCreation;
 
@@ -11,6 +12,7 @@ public static class CosmereBootstrap
     {
         CosmereTime.Initialize();
         CosmereLivingWorld.Initialize();
+        CosmereEventRuntime.Initialize();
     }
 
     [OnEvent(nameof(CharCreation.CharacterCreatedEvent))]

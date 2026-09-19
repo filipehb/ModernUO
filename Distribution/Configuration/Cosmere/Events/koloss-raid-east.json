@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "id": "koloss-raid-east",
+  "title": "Koloss Raid (East)",
+  "summary": "A koloss warband scourges a regional stretch of land.",
+  "staffNotes": "Sample regional event. Kill a DireWolf in-bounds to start (demo trigger using a common creature type until Cosmere catalog exists).",
+  "scope": "Regional",
+  "map": "Felucca",
+  "x": 1400,
+  "y": 1600,
+  "width": 80,
+  "height": 80,
+  "enabled": true,
+  "startMode": "Trigger",
+  "endMode": "Duration",
+  "durationMinutes": 90,
+  "maxConcurrentInstances": 1,
+  "startTriggers": [
+    {
+      "type": "CreatureDeath",
+      "creatureType": "DireWolf",
+      "regionalFilter": true,
+      "actions": []
+    }
+  ],
+  "phases": [
+    {
+      "id": "raid",
+      "title": "Raid",
+      "onEnter": [
+        {
+          "type": "Announce",
+          "message": "Koloss howls tear across the eastern flats — the raid has begun.",
+          "audience": "Region"
+        },
+        {
+          "type": "SpawnTemp",
+          "creatureType": "Ogre",
+          "count": 3,
+          "locationMode": "RandomInRegion",
+          "lifespanMinutes": 90
+        },
+        {
+          "type": "GrantGoal",
+          "goalId": "koloss-raid-east",
+          "goalTitle": "Drive Back the Raid"
+        }
+      ],
+      "triggers": [
+        {
+          "type": "EnterBounds",
+          "actions": [
+            {
+              "type": "Announce",
+              "message": "You cross into contested ground. The raid is underway.",
+              "audience": "Region"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

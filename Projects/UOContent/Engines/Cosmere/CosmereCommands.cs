@@ -1,5 +1,6 @@
 using System;
 using Server.Commands;
+using Server.Engines.Cosmere.Events;
 using Server.Items;
 using Server.Mobiles;
 using Server.Targeting;
@@ -64,6 +65,7 @@ public static class CosmereCommands
         CommandSystem.Register("Unpossess", AccessLevel.GameMaster, Unpossess_OnCommand);
         CommandSystem.Register("CosmereRP", AccessLevel.Player, CosmereRP_OnCommand);
         CommandSystem.Register("CosmereRPList", AccessLevel.GameMaster, CosmereRPList_OnCommand);
+        CommandSystem.Register("CosmereEvent", AccessLevel.Counselor, CosmereEvent_OnCommand);
     }
 
     [Usage("CosmereSheet")]
@@ -1053,6 +1055,91 @@ public static class CosmereCommands
         }
 
         CosmereRpListGump.DisplayTo(e.Mobile, e.ArgString?.Trim() ?? "");
+    }
+
+    [Usage("CosmereEvent [start|stop|status|reload] [id]")]
+    [Description("Manage Cosmere dynamic events (Counselor+).")]
+    private static void CosmereEvent_OnCommand(CommandEventArgs e)
+    {
+        if (e.Mobile.AccessLevel < AccessLevel.Counselor)
+        {
+            e.Mobile.SendMessage("CosmereEvent requires Counselor access.");
+            return;
+        }
+
+        if (!CosmereConfig.EventsEnabled)
+        {
+            e.Mobile.SendMessage("Cosmere events are disabled.");
+            return;
+        }
+
+        var sub = e.GetString(0)?.Trim().ToLowerInvariant() ?? "";
+        if (string.IsNullOrEmpty(sub))
+        {
+            CosmereEventListGump.DisplayTo(e.Mobile);
+            return;
+        }
+
+        switch (sub)
+        {
+            case "status":
+                CosmereEventStatusGump.DisplayTo(e.Mobile);
+                break;
+            case "reload":
+                if (e.Mobile.AccessLevel < AccessLevel.Administrator)
+                {
+                    e.Mobile.SendMessage("Reload requires Administrator.");
+                    return;
+                }
+
+                CosmereEventCatalog.Reload();
+                CosmereEventRuntime.ReloadSchedules();
+                e.Mobile.SendMessage("Cosmere event definitions reloaded.");
+                break;
+            case "start":
+                {
+                    var id = e.GetString(1)?.Trim();
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        e.Mobile.SendMessage("Usage: CosmereEvent start <id>");
+                        return;
+                    }
+
+                    if (CosmereEventRuntime.TryStart(id, out var inst, out var error))
+                    {
+                        e.Mobile.SendMessage($"Started {id} (instance {inst.InstanceId}).");
+                    }
+                    else
+                    {
+                        e.Mobile.SendMessage(error ?? "Start failed.");
+                    }
+
+                    break;
+                }
+            case "stop":
+                {
+                    var id = e.GetString(1)?.Trim();
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        e.Mobile.SendMessage("Usage: CosmereEvent stop <id>");
+                        return;
+                    }
+
+                    if (CosmereEventRuntime.TryStopDefinition(id, cancel: true, out var stopped))
+                    {
+                        e.Mobile.SendMessage($"Stopped {stopped} instance(s) of {id}.");
+                    }
+                    else
+                    {
+                        e.Mobile.SendMessage("No running instances.");
+                    }
+
+                    break;
+                }
+            default:
+                CosmereEventListGump.DisplayTo(e.Mobile);
+                break;
+        }
     }
 
     private class CosmereRpTarget : Target
